@@ -23,6 +23,7 @@
   --primary-text: #000000;
   --primary-text-dark: #FFFFFF;
   --secondary-text: #6C757D;
+  --secondary-text-dark: #97A0A7;
   --brand-text: #2E3A59;
   --brand-text-dark: #E8ECFF;
 
@@ -42,6 +43,16 @@
   --gray-700: #374151;
   --gray-800: #1f2937;
   --gray-900: #111827;
+
+  /* Spacing */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem;  /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem;    /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem;  /* 24px */
+  --space-8: 2rem;    /* 32px */
+
 }
 
 @theme inline {
@@ -63,24 +74,20 @@
   --color-accent: var(--accent);
   --color-accent-light: var(--accent);
   --color-accent-dark: var(--accent);
+
   /* Text Colors */
   --color-primary-text: var(--primary-text);
-  --color-secondary-text: var(--secondary-text);
-  --color-brand-text: var(--brand-text);
   --color-primary-text-dark: var(--primary-text-dark);
+  --color-secondary-text: var(--secondary-text);
+  --color-secondary-text-dark: var(--secondary-text-dark);
+  --color-brand-text: var(--brand-text);
   --color-brand-text-dark: var(--brand-text-dark);
+
   /* Status Colors */
   --color-success: var(--success);
-  --color-success-light: var(--success);
-  --color-success-dark: var(--success);
-
   --color-warning: var(--warning);
-  --color-warning-light: var(--warning);
-  --color-warning-dark: var(--warning);
-
   --color-error: var(--error);
-  --color-error-light: var(--error);
-  --color-error-dark: var(--error);
+
   /* Gray Palette */
   --color-gray-50: var(--gray-50);
   --color-gray-100: var(--gray-100);
@@ -92,19 +99,29 @@
   --color-gray-700: var(--gray-700);
   --color-gray-800: var(--gray-800);
   --color-gray-900: var(--gray-900);
+
+  /* Spacing */
+  --space-1: var(--space-1);
+  --space-2: var(--space-2);
+  --space-3: var(--space-3);
+  --space-4: var(--space-4);
+  --space-5: var(--space-5);
+  --space-6: var(--space-6);
+  --space-8: var(--space-8);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #000000;
-    --foreground: #2C2F33;
+    --background: var(--background-dark);
+    --foreground: var(--foreground-dark);
 
     /* Adjust colors for dark mode if needed */
-    --primary: #E8ECFF;
-    --secondary: #2E3A59;
+    --primary: var(--primary-dark);
+    --secondary: var(--secondary-dark);
 
-    --color-text-primary: #FFFFFF;
-    --color-text-brand: #E8ECFF;
+    --primary-text: var(--primary-text-dark);
+    --secondary-text: var(--secondary-text-dark);
+    --brand-text: var(--brand-text-dark);
   }
 }
 
@@ -112,4 +129,25 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+h1, h2, h3 {
+  color: var(--brand-text);
+}
+
+p {
+  color: var(--primary-text)
+}
+
+/* .Card {
+  background: var(--foreground);
+  border-radius: 30px;
+  padding: var(--space-4);
+} */
+
+.main {
+  background: var(--background);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
