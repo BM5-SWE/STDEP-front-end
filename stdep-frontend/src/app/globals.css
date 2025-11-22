@@ -1,4 +1,5 @@
 @import "tailwindcss";
+/* @import "tailwindcss/preflight"; */
 
 :root {
   /* Background & Foreground */
@@ -88,6 +89,8 @@
   --color-warning: var(--warning);
   --color-error: var(--error);
 
+  --color-line: var(--line);
+
   /* Gray Palette */
   --color-gray-50: var(--gray-50);
   --color-gray-100: var(--gray-100);
@@ -139,15 +142,10 @@ p {
   color: var(--primary-text)
 }
 
-/* .Card {
-  background: var(--foreground);
-  border-radius: 30px;
-  padding: var(--space-4);
-} */
-
-.main {
+main {
   background: var(--background);
   min-height: 100vh;
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
 }
