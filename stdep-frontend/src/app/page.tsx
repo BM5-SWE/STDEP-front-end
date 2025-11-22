@@ -64,7 +64,7 @@ const collaborationHighlights = [
 
 export default function Home() {
 	return (
-		<main className="grid h-screen grid-rows-3 gap-6 bg-background text-primary-text">
+		<div className="h-screen grid grid-cols-2 gap-6 bg-background text-primary-text">
 			{/* left section */}
 			<section id="left-hero" className="flex flex-col gap-6">
 				<Card className="mb-(--space-6)">
@@ -80,6 +80,6 @@ export default function Home() {
 					<p>right</p>
 				</Card>
 			</section>
-		</main>
+		</div>
 	);
 }
