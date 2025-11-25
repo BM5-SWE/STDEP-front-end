@@ -66,16 +66,16 @@ export default function Home() {
 	return (
 		<div className="h-screen grid grid-cols-2 gap-6 bg-background text-primary-text">
 			{/* left section */}
-			<section id="left-hero" className="flex flex-col gap-6">
+			<section id="left-hero" className="">
 				<Card className="mb-(--space-6)">
-					<p>topleft</p>
+					<p>topleft d</p>
 				</Card>
 				<Card>
 					<p>bottomleft</p>
 				</Card>
 			</section>
 			{/* right section */}
-			<section id="right-hero" className="row-span-2">
+			<section id="right-hero" className="">
 				<Card>
 					<p>right</p>
 				</Card>
