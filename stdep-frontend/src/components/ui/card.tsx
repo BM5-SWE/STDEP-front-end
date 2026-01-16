@@ -8,7 +8,7 @@ function mergeClassNames(base: string, extra?: string) {
 export type CardProps = ComponentPropsWithoutRef<"div">;
 
 const cardBaseClasses =
-	"relative flex w-full flex-col align-items-center rounded-4xl bg-foreground p-(--space-6) border border-color-line border-[0.5px] text-primary-text transition-all hover:shadow-xl";
+	"relative flex w-full flex-col align-items-center rounded-4xl bg-foreground p-(--space-6) border border-color-line border-[0.5px] text-primary-text transition-all";
 
 export function Card({ className, ...props }: CardProps) {
 	return (
