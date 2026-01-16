@@ -9,6 +9,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { motion } from "motion/react";
+import Link from "next/link";
 
 const fadeInUp = {
 	hidden: { opacity: 0, y: 24 },
@@ -71,18 +72,28 @@ export default function Home() {
 			>
 				{/* left section stays fixed while scrolling */}
 				<section id="left-hero" className="sticky top-0 h-full">
-					<div className="grid h-full grid-rows-[1.2fr_1fr_1fr_auto] gap-4">
-						<motion.div initial="hidden" animate="visible" variants={fadeInUp} className="h-full">
-							<Card className="justify-between p-4 h-full">
-								<CardHeader className="gap-2 pb-3">
-									<h1 className="text-4xl font-extrabold leading-tight text-brand-text">
-										SmartTrend
-									</h1>
-									<p className="text-sm tracking-[0.3em] text-secondary-text uppercase">
-										By BM5
-									</p>
-								</CardHeader>
-								<CardFooter className="border-0 p-0 pt-1">
+					<div className="grid h-full grid-rows-[auto_1fr_1fr_1fr_auto] gap-4">
+						<motion.div initial="hidden" animate="visible" variants={fadeInUp}>
+							<div className="m-2">
+								<Link href="/" className="block">
+								<h1 className="text-4xl font-extrabold leading-tight text-brand-text">
+									SmartTrend
+								</h1>
+								<p className="text-sm tracking-[0.2em] text-secondary-text uppercase">
+									By BM5
+								</p>
+							</Link>
+							</div>
+						</motion.div>
+						<motion.div
+							initial="hidden"
+							animate="visible"
+							variants={fadeInUp}
+							className="h-full"
+						>
+							<Card className="justify-end p-4 h-full">
+								<p>hi</p>
+								<CardFooter className="border-0 p-0">
 									<button className="w-full rounded-2xl bg-accent px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:brightness-95">
 										About BM5
 									</button>
@@ -104,9 +115,9 @@ export default function Home() {
 									</CardDescription>
 								</CardHeader>
 								<CardFooter className="border-0 p-0 pt-2">
-									<button className="w-full rounded-2xl bg-brand-text px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:brightness-90">
+									<Link href="/login" className="w-full rounded-2xl bg-brand-text px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:brightness-90 flex items-center justify-center">
 										Log In
-									</button>
+									</Link>
 								</CardFooter>
 							</Card>
 						</motion.div>
@@ -137,12 +148,18 @@ export default function Home() {
 								</CardFooter>
 							</Card>
 						</motion.div>
-						<div className="flex items-center text-[11px] leading-snug text-secondary-text">
-							<span>
-								* Your data is private and secured. Do not share your
-								information.
-							</span>
-						</div>
+						<motion.div
+							initial="hidden"
+							animate="visible"
+							variants={fadeInSoft}
+						>
+							<div className="flex items-center text-[11px] leading-snug text-secondary-text">
+								<span>
+									* Your data is private and secured. Do not share your
+									information.
+								</span>
+							</div>
+						</motion.div>
 					</div>
 				</section>
 				{/* right section scrolls independently */}
