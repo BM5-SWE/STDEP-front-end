@@ -7,6 +7,7 @@ import {
 	CardDescription,
 } from "@/components/ui/card";
 import { motion } from "motion/react";
+import Link from "next/link";
 
 const fadeInUp = {
 	hidden: { opacity: 0, y: 24 },
@@ -26,6 +27,15 @@ const fadeInUpDelayed = {
 	},
 };
 
+const fadeInSoft = {
+	hidden: { opacity: 0, y: 16 },
+	visible: {
+		opacity: 1,
+		y: 0,
+		transition: { duration: 0.5 },
+	},
+};
+
 export default function LoginPage() {
 	return (
 		<main className="h-screen overflow-hidden bg-background text-primary-text p-0">
@@ -37,14 +47,14 @@ export default function LoginPage() {
 				<section id="left-login" className="sticky top-0 h-full">
 					<div className="flex h-full flex-col gap-6">
 						<motion.div initial="hidden" animate="visible" variants={fadeInUp}>
-							<div className="m-2">
+							<Link href="/" className="m-2 block">
 								<h1 className="text-4xl font-extrabold leading-tight text-brand-text">
 									SmartTrend
 								</h1>
 								<p className="text-sm tracking-[0.2em] text-secondary-text uppercase">
 									By BM5
 								</p>
-							</div>
+							</Link>
 						</motion.div>
 
 						<motion.div
@@ -112,7 +122,12 @@ export default function LoginPage() {
 							</Card>
 						</motion.div>
 
-						<div className="text-xs leading-relaxed text-secondary-text space-y-3">
+						<motion.div
+							initial="hidden"
+							animate="visible"
+							variants={fadeInSoft}
+						>
+							<div className="text-xs leading-relaxed text-secondary-text space-y-3">
 							<p>
 								* Your data is private and secured. Do not share your
 								information.
@@ -147,7 +162,8 @@ export default function LoginPage() {
 								have questions about how your information is managed, please
 								contact our support team.
 							</p>
-						</div>
+							</div>
+						</motion.div>
 					</div>
 				</section>
 
