@@ -108,7 +108,7 @@ export default function Home() {
 						>
 							<Card className="p-5 h-full">
 								<CardHeader>
-									<CardTitle className="text-3xl">Log In</CardTitle>
+									<CardTitle className="text-2xl">Log In</CardTitle>
 									<CardDescription>
 										Are you a registered PSCC Employee? Click the Log In button
 										below to authenticate.
@@ -136,9 +136,9 @@ export default function Home() {
 									</CardDescription>
 								</CardHeader>
 								<CardFooter className="border-0 flex flex-col gap-2 p-0 pt-2">
-									<button className="w-full rounded-2xl border border-brand-text px-4 py-3 text-base font-semibold text-brand-text transition hover:bg-brand-text hover:text-white">
+									<Link href="/register" className="w-full rounded-2xl border border-brand-text px-4 py-3 text-base font-semibold text-brand-text transition hover:bg-brand-text hover:text-white flex items-center justify-center">
 										Register
-									</button>
+									</Link>
 									<p className="text-xs text-secondary-text leading-snug">
 										<span className="font-semibold text-brand-text">
 											Click here for more information
