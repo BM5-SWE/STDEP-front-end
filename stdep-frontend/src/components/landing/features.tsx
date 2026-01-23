@@ -25,7 +25,7 @@ const features = [
 
 export function Features() {
   return (
-    <div className="ml-[30%] min-w-0 h-screen overflow-y-auto p-4 pl-0">
+    <div className="ml-[30%] min-w-0 h-screen p-4 pl-0">
       <div className="flex flex-col gap-4">
         {features.map((feature, index) => (
           <section
