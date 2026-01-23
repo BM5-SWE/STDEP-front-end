@@ -1,19 +1,13 @@
-"use client"
-
-import { useState } from "react"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { motion } from "motion/react"
-
-type AuthMode = "login" | "register" | null
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function Sidebar() {
-  const [activeCard, setActiveCard] = useState<AuthMode>(null)
-
   return (
     <aside className="fixed left-0 top-0 h-screen w-[30%] min-w-[340px] max-w-[440px] flex flex-col p-4">
-      <div className="bg-card rounded-2xl flex flex-col h-full p-6 shadow-sm border border-border">
+      <div className="bg-card rounded-2xl flex flex-col h-full p-6 shadow-sm border border-border animate-slide-in-left">
         {/* Logo Section */}
-        <div className="mb-8">
+        <div className="mb-8 animate-start-hidden animate-fade-in-up animation-delay-100">
           <h1 className="text-3xl font-bold text-primary tracking-tight">
             SmartTrend
           </h1>
@@ -23,126 +17,64 @@ export function Sidebar() {
         </div>
 
         {/* About Button */}
-        <div className="mb-6">
-          <motion.button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-6">
+        <div className="mb-6 animate-start-hidden animate-fade-in-up animation-delay-200">
+          <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-6">
             About BM5
-          </motion.button>
+          </Button>
         </div>
 
         {/* Auth Cards */}
         <div className="flex flex-col gap-4 flex-1">
           {/* Login Card */}
-          <Card 
-            className={`border shadow-none cursor-pointer transition-all duration-300 ${
-              activeCard === "login" 
-                ? "border-primary ring-2 ring-primary/20" 
-                : "border-border hover:border-muted-foreground/30"
-            }`}
-            onClick={() => setActiveCard(activeCard === "login" ? null : "login")}
-          >
-            <CardHeader className="text-left pb-2">
+          <Card className="border border-border shadow-none animate-start-hidden animate-fade-in-up animation-delay-300">
+            <CardHeader className="text-left pb-3">
               <CardTitle className="text-xl font-bold text-foreground">Log In</CardTitle>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Are you a registered PSCC Employee?<br />
                 Click the Log In button below to authenticate.
               </p>
             </CardHeader>
-            
-            {activeCard === "login" && (
-              <CardDescription className="pt-2" onClick={(e) => e.stopPropagation()}>
-                <div className="space-y-4">
-                  <div className="space-y-2 text-left">
-                    <motion.label htmlFor="email">Email</motion.label>
-                    <motion.input 
-                      id="email" 
-                      type="email" 
-                      placeholder="Enter your email" 
-                      className="rounded-lg"
-                    />
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <motion.label htmlFor="password">Password</motion.label>
-                    <motion.input 
-                      id="password" 
-                      type="password" 
-                      placeholder="Enter your password" 
-                      className="rounded-lg"
-                    />  
-                  </div>
-                  <motion.button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5">
+            <CardContent className="pt-0">
+              <div className="border-t border-border pt-4">
+                <Link href="/login">
+                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5">
                     Log In
-                  </motion.button>
-                </div>
-              </CardDescription>
-            )}
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
           </Card>
 
           {/* Register Card */}
-          <Card 
-            className={`border shadow-none cursor-pointer transition-all duration-300 ${
-              activeCard === "register" 
-                ? "border-primary ring-2 ring-primary/20" 
-                : "border-border hover:border-muted-foreground/30"
-            }`}
-            onClick={() => setActiveCard(activeCard === "register" ? null : "register")}
-          >
-            <CardHeader className="text-left pb-2">
+          <Card className="border border-border shadow-none animate-start-hidden animate-fade-in-up animation-delay-400">
+            <CardHeader className="text-left pb-3">
               <CardTitle className="text-xl font-bold text-primary">Register</CardTitle>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 A 6-digit access code from your admin required.<br />
                 Click the Register button below to complete registration.
               </p>
             </CardHeader>
-            
-            {activeCard === "register" && (
-              <CardDescription className="pt-2" onClick={(e) => e.stopPropagation()}>
-                <div className="space-y-4">
-                  <div className="space-y-2 text-left">
-                    <motion.label htmlFor="reg-email">Email</motion.label>
-                    <motion.input 
-                      id="reg-email" 
-                      type="email" 
-                      placeholder="Enter your email" 
-                      className="rounded-lg"
-                    />
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <motion.label htmlFor="access-code">Access Code</motion.label>
-                    <motion.input 
-                      id="access-code" 
-                      type="text" 
-                      placeholder="Enter 6-digit code" 
-                      maxLength={6}
-                      className="rounded-lg"
-                    />
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <motion.label htmlFor="reg-password">Password</motion.label>
-                    <motion.input 
-                      id="reg-password" 
-                      type="password" 
-                      placeholder="Create a password" 
-                      className="rounded-lg"
-                    />
-                  </div>
-                  <motion.button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5">
+            <CardContent className="pt-0">
+              <div className="border-t border-border pt-4 flex items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground text-left">
+                  {"Don't have an access code? "}
+                  <span className="underline cursor-pointer hover:text-foreground">
+                    Click here
+                  </span>
+                  {" for more information"}
+                </p>
+                <Link href="/register">
+                  <Button variant="outline" className="rounded-full px-8 py-5 border-border hover:bg-muted bg-transparent">
                     Register
-                  </motion.button>
-                  <p className="text-xs text-muted-foreground text-left">
-                    {"Don't have an access code? "}
-                    <span className="underline cursor-pointer hover:text-foreground">
-                      Click here
-                    </span>
-                    {" for more information"}
-                  </p>
-                </div>
-              </CardDescription>
-            )}
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
           </Card>
         </div>
 
         {/* Footer */}
-        <div className="mt-auto pt-6 text-left">
+        <div className="mt-auto pt-6 text-left animate-start-hidden animate-fade-in-up animation-delay-500">
           <p className="text-xs text-muted-foreground">
             * Your data is private and secured. Do not share your information.
           </p>

@@ -1,4 +1,4 @@
-import { motion } from "motion/react"
+import { ChevronDown } from "lucide-react"
 
 const features = [
   {
@@ -23,16 +23,19 @@ const features = [
   },
 ]
 
-export function Features() {
+export function FeatureCards() {
   return (
-    <div className="ml-[30%] min-w-0 h-screen p-4 pl-0">
+    <div className="ml-[30%] min-w-0 h-screen overflow-y-auto p-4 pl-0">
       <div className="flex flex-col gap-4">
         {features.map((feature, index) => (
           <section
             key={feature.title}
             className="h-[calc(100vh-2rem)] flex-shrink-0"
           >
-            <div className="bg-card rounded-2xl w-full h-full flex flex-col items-center justify-center p-8 lg:p-16 shadow-sm border border-border relative">
+            <div 
+              className="bg-card rounded-2xl w-full h-full flex flex-col items-center justify-center p-8 lg:p-16 shadow-sm border border-border relative animate-slide-in-right"
+              style={{ animationDelay: `${index * 100}ms` }}
+            >
               <div className="max-w-2xl text-center">
                 {/* Subtitle */}
                 <p className="text-sm text-muted-foreground uppercase tracking-[0.25em] mb-6">
@@ -52,17 +55,10 @@ export function Features() {
               
               {/* Scroll Indicator - only on first card */}
               {index === 0 && (
-                    <motion.div
-                        className="text-xl"
-                        animate={{ y: [0, 6, 0] }}
-                        transition={{
-                            repeat: Infinity,
-                            duration: 1.6,
-                            ease: "easeInOut",
-                        }}
-                    >
-                        ↓
-                    </motion.div>
+                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-muted-foreground">
+                  <span className="text-xs uppercase tracking-[0.2em]">Scroll for more</span>
+                  <ChevronDown className="w-5 h-5 animate-bounce" />
+                </div>
               )}
             </div>
           </section>
