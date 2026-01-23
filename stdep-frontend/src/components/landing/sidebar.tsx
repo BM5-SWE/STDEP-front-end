@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function Sidebar() {
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[30%] min-w-[340px] max-w-[440px] flex flex-col p-4">
-      <div className="bg-card rounded-2xl flex flex-col h-full p-6 shadow-sm border border-border animate-slide-in-left">
+    <aside className="h-[calc(100vh-2rem)]">
+      <div className="bg-card rounded-2xl h-full p-6 shadow-sm border border-border">
         {/* Logo Section */}
         <div className="mb-8 animate-start-hidden animate-fade-in-up animation-delay-100">
           <h1 className="text-3xl font-bold text-primary tracking-tight">

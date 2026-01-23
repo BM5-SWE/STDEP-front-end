@@ -25,12 +25,12 @@ const features = [
 
 export function FeatureCards() {
   return (
-    <div className="ml-[30%] min-w-0 h-screen overflow-y-auto p-4 pl-0">
+    <div className="h-[calc(100vh-2rem)] overflow-y-auto">
       <div className="flex flex-col gap-4">
         {features.map((feature, index) => (
           <section
             key={feature.title}
-            className="h-[calc(100vh-2rem)] flex-shrink-0"
+            className="h-[calc(100vh-2rem)] shrink-0"
           >
             <div 
               className="bg-card rounded-2xl w-full h-full flex flex-col items-center justify-center p-8 lg:p-16 shadow-sm border border-border relative animate-slide-in-right"
