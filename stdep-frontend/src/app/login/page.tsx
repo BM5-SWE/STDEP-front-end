@@ -1,10 +1,23 @@
+"use client"
+
 import Link from "next/link"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function LoginPage() {
+  const { login, loading, error } = useAuth()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await login(email, password)
+  }
+
   return (
     <main className="min-h-screen bg-background p-4">
       <div className="flex gap-4 h-[calc(100vh-2rem)]">
@@ -32,14 +45,18 @@ export default function LoginPage() {
                 </p>
               </CardHeader>
               <CardContent className="pt-0 flex-1 flex flex-col">
-                <div className="border-t border-border pt-4 flex-1 flex flex-col">
+                <form onSubmit={handleSubmit} className="border-t border-border pt-4 flex-1 flex flex-col">
                   <div className="space-y-4 flex-1">
                     <div className="space-y-2 text-left">
                       <Label htmlFor="email">Email</Label>
                       <Input 
                         id="email" 
                         type="email" 
-                        placeholder="Enter your email" 
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={loading}
+                        required
                         className="rounded-lg"
                       />
                     </div>
@@ -48,14 +65,27 @@ export default function LoginPage() {
                       <Input 
                         id="password" 
                         type="password" 
-                        placeholder="Enter your password" 
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={loading}
+                        required
                         className="rounded-lg"
                       />
                     </div>
+                    {error && (
+                      <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+                        {error}
+                      </div>
+                    )}
                   </div>
                   <div className="mt-auto pt-6">
-                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5">
-                      Log In
+                    <Button 
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5"
+                    >
+                      {loading ? "Logging in..." : "Log In"}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center mt-4">
                       {"Don't have an account? "}
@@ -64,7 +94,7 @@ export default function LoginPage() {
                       </Link>
                     </p>
                   </div>
-                </div>
+                </form>
               </CardContent>
             </Card>
 
