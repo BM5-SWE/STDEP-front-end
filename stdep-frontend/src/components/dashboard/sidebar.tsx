@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   BarChart3,
-  Target,
   Search,
   History,
   Bookmark,
@@ -18,7 +17,6 @@ import {
 
 const menuItems = [
   { name: "Analytics", href: "/dashboard", icon: BarChart3 },
-  { name: "Focuses", href: "/dashboard/focuses", icon: Target },
   { name: "Query / Search", href: "/dashboard/search", icon: Search },
   { name: "History", href: "/dashboard/history", icon: History },
   { name: "Saved", href: "/dashboard/saved", icon: Bookmark },
