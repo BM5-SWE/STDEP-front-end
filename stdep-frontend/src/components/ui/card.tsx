@@ -1,83 +1,92 @@
-import type { ComponentPropsWithoutRef } from "react";
+import * as React from "react"
 
-// Lightweight class name helper to keep component usage flexible.
-function mergeClassNames(base: string, extra?: string) {
-	return extra ? `${base} ${extra}` : base;
+import { cn } from "@/lib/utils"
+
+function Card({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card"
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-export type CardProps = ComponentPropsWithoutRef<"div">;
-
-const cardBaseClasses =
-	"relative flex w-full flex-col align-items-center rounded-4xl bg-foreground p-(--space-6) border border-color-line border-[0.5px] text-primary-text transition-all";
-
-export function Card({ className, ...props }: CardProps) {
-	return (
-		<div className={mergeClassNames(cardBaseClasses, className)} {...props} />
-	);
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-export type CardSectionProps = ComponentPropsWithoutRef<"div">;
-
-export function CardHeader({ className, ...props }: CardSectionProps) {
-	return (
-		<div
-			className={mergeClassNames(
-				"flex flex-col gap-(--space-2) pb-(--space-2)",
-				className
-			)}
-			{...props}
-		/>
-	);
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn("leading-none font-semibold", className)}
+      {...props}
+    />
+  )
 }
 
-export function CardBody({ className, ...props }: CardSectionProps) {
-	return (
-		<div
-			className={mergeClassNames(
-				"flex flex-col gap-(--space-2) py-(--space-2)",
-				className
-			)}
-			{...props}
-		/>
-	);
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  )
 }
 
-export function CardFooter({ className, ...props }: CardSectionProps) {
-	return (
-		<div
-			className={mergeClassNames(
-				"flex items-center justify-between gap-(--space-1) pt-(--space-2) border-t border-primary/20 text-sm text-secondary-text",
-				className
-			)}
-			{...props}
-		/>
-	);
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-export type CardTitleProps = ComponentPropsWithoutRef<"h3">;
-
-export function CardTitle({ className, ...props }: CardTitleProps) {
-	return (
-		<h3
-			className={mergeClassNames(
-				"text-2xl font-semibold tracking-tight text-brand-text",
-				className
-			)}
-			{...props}
-		/>
-	);
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-6", className)}
+      {...props}
+    />
+  )
 }
 
-export type CardDescriptionProps = ComponentPropsWithoutRef<"p">;
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      {...props}
+    />
+  )
+}
 
-export function CardDescription({ className, ...props }: CardDescriptionProps) {
-	return (
-		<p
-			className={mergeClassNames(
-				"text-base leading-relaxed text-secondary-text",
-				className
-			)}
-			{...props}
-		/>
-	);
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
 }

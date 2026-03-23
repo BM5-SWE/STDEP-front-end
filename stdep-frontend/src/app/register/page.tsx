@@ -4,11 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <main className="min-h-screen bg-background p-4">
       <div className="flex gap-4 h-[calc(100vh-2rem)]">
-        {/* Left Side - Login Form */}
+        {/* Left Side - Register Form */}
         <aside className="w-[30%] min-w-[340px] max-w-[440px] flex flex-col">
           <div className="bg-card rounded-2xl flex flex-col h-full p-6 shadow-sm border border-border animate-slide-in-left">
             {/* Logo Section */}
@@ -23,17 +23,26 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Login Card */}
+            {/* Register Card */}
             <Card className="border border-border shadow-none flex-1 flex flex-col animate-start-hidden animate-fade-in-up animation-delay-200">
               <CardHeader className="text-left pb-3">
-                <CardTitle className="text-xl font-bold text-foreground">Log In</CardTitle>
+                <CardTitle className="text-xl font-bold text-primary">Register</CardTitle>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Enter your credentials below to access your account.
+                  Create your account to get started with SmartTrend analytics.
                 </p>
               </CardHeader>
               <CardContent className="pt-0 flex-1 flex flex-col">
                 <div className="border-t border-border pt-4 flex-1 flex flex-col">
                   <div className="space-y-4 flex-1">
+                    <div className="space-y-2 text-left">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input 
+                        id="name" 
+                        type="text" 
+                        placeholder="Enter your full name" 
+                        className="rounded-lg"
+                      />
+                    </div>
                     <div className="space-y-2 text-left">
                       <Label htmlFor="email">Email</Label>
                       <Input 
@@ -44,24 +53,41 @@ export default function LoginPage() {
                       />
                     </div>
                     <div className="space-y-2 text-left">
+                      <Label htmlFor="access-code">Access Code</Label>
+                      <Input 
+                        id="access-code" 
+                        type="text" 
+                        placeholder="Enter 6-digit code" 
+                        maxLength={6}
+                        className="rounded-lg"
+                      />
+                    </div>
+                    <div className="space-y-2 text-left">
                       <Label htmlFor="password">Password</Label>
                       <Input 
                         id="password" 
                         type="password" 
-                        placeholder="Enter your password" 
+                        placeholder="Create a password" 
                         className="rounded-lg"
                       />
                     </div>
                   </div>
                   <div className="mt-auto pt-6">
                     <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5">
-                      Log In
+                      Register
                     </Button>
                     <p className="text-xs text-muted-foreground text-center mt-4">
-                      {"Don't have an account? "}
-                      <Link href="/register" className="underline hover:text-foreground">
-                        Register here
+                      {"Already have an account? "}
+                      <Link href="/login" className="underline hover:text-foreground">
+                        Log in here
                       </Link>
+                    </p>
+                    <p className="text-xs text-muted-foreground text-left mt-4">
+                      {"Don't have an access code? "}
+                      <span className="underline cursor-pointer hover:text-foreground">
+                        Click here
+                      </span>
+                      {" for more information"}
                     </p>
                   </div>
                 </div>
@@ -81,13 +107,13 @@ export default function LoginPage() {
         <section className="flex-1">
           <div className="bg-card rounded-2xl h-full p-8 shadow-sm border border-border flex flex-col items-center justify-center text-center animate-slide-in-right">
             <p className="text-sm text-muted-foreground uppercase tracking-[0.3em] mb-4">
-              WELCOME BACK TO
+              GET STARTED WITH
             </p>
             <h2 className="text-5xl md:text-6xl font-bold text-foreground mb-6 text-balance">
               SmartTrend Analytics
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl leading-relaxed text-balance">
-              Access your personalized dashboard to view market trends, track competitor insights, and make data-driven decisions for your business.
+              Join thousands of businesses using SmartTrend to identify emerging market trends, analyze competitor strategies, and drive growth with data-driven insights.
             </p>
           </div>
         </section>
