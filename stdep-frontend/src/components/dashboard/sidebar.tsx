@@ -17,7 +17,7 @@ import {
 
 const menuItems = [
   { name: "Analytics", href: "/dashboard", icon: BarChart3 },
-  { name: "Query / Search", href: "/dashboard/search", icon: Search },
+  // { name: "Query / Search", href: "/dashboard/search", icon: Search }, // Removed, now in dashboard
   { name: "History", href: "/dashboard/history", icon: History },
   { name: "Saved", href: "/dashboard/saved", icon: Bookmark },
   { name: "Margin Calculator", href: "/dashboard/calculator", icon: Calculator },
