@@ -1,10 +1,59 @@
+"use client"
 import Link from "next/link"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export default function RegisterPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [accessCode, setAccessCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // Use env variable if available, fallback to hardcoded URL
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://<EC2-PUBLIC-IP>:8000";
+  console.log(API_BASE)
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          username,
+          password,
+          access_code: accessCode
+        })
+      });
+      if (!res.ok) {
+        let data;
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          data = {};
+        }
+        setError((data && typeof data.detail === "string") ? data.detail : "Registration failed");
+      } else {
+        setSuccess("Registration successful! You can now log in.");
+      }
+    } catch (err) {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-background p-4">
       <div className="flex gap-4 h-[calc(100vh-2rem)]">
@@ -32,50 +81,74 @@ export default function RegisterPage() {
                 </p>
               </CardHeader>
               <CardContent className="pt-0 flex-1 flex flex-col">
-                <div className="border-t border-border pt-4 flex-1 flex flex-col">
+                <form className="border-t border-border pt-4 flex-1 flex flex-col" onSubmit={handleRegister}>
                   <div className="space-y-4 flex-1">
                     <div className="space-y-2 text-left">
                       <Label htmlFor="name">Full Name</Label>
-                      <Input 
-                        id="name" 
-                        type="text" 
-                        placeholder="Enter your full name" 
+                      <Input
+                        id="name"
+                        type="text"
+                        placeholder="Enter your full name"
                         className="rounded-lg"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2 text-left">
                       <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="Enter your email" 
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email"
                         className="rounded-lg"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2 text-left">
+                      <Label htmlFor="username">Username</Label>
+                      <Input
+                        id="username"
+                        type="text"
+                        placeholder="Choose a username"
+                        className="rounded-lg"
+                        value={username}
+                        onChange={e => setUsername(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2 text-left">
                       <Label htmlFor="access-code">Access Code</Label>
-                      <Input 
-                        id="access-code" 
-                        type="text" 
-                        placeholder="Enter 6-digit code" 
-                        maxLength={6}
+                      <Input
+                        id="access-code"
+                        type="text"
+                        placeholder="Enter access code"
                         className="rounded-lg"
+                        value={accessCode}
+                        onChange={e => setAccessCode(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2 text-left">
                       <Label htmlFor="password">Password</Label>
-                      <Input 
-                        id="password" 
-                        type="password" 
-                        placeholder="Create a password" 
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="Create a password"
                         className="rounded-lg"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
                       />
                     </div>
                   </div>
                   <div className="mt-auto pt-6">
-                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5">
-                      Register
+                    <Button
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5"
+                      type="submit"
+                      disabled={loading}
+                    >
+                      {loading ? "Registering..." : "Register"}
                     </Button>
+                    {error && <p className="text-xs text-red-500 text-center mt-2">{error}</p>}
+                    {success && <p className="text-xs text-green-600 text-center mt-2">{success}</p>}
                     <p className="text-xs text-muted-foreground text-center mt-4">
                       {"Already have an account? "}
                       <Link href="/login" className="underline hover:text-foreground">
@@ -90,7 +163,7 @@ export default function RegisterPage() {
                       {" for more information"}
                     </p>
                   </div>
-                </div>
+                </form>
               </CardContent>
             </Card>
 
