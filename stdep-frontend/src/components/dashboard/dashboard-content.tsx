@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { ArrowUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -41,12 +42,24 @@ const marketGrowthData = [
   { month: "Aug", value: 85000 },
 ]
 
+
 export function DashboardContent() {
   const [activeTab, setActiveTab] = useState<"amazon" | "aliexpress">("amazon")
+  const [query, setQuery] = useState("")
 
   return (
     <div className="ml-[240px] min-h-screen p-4 pl-0">
       <div className="flex flex-col gap-4">
+        {/* Query/Search Bar */}
+        <div className="flex justify-center mb-4 animate-fade-in-up">
+          <Input
+            type="text"
+            placeholder="Search for products, categories, or clusters..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            className="max-w-xl border border-border shadow-sm"
+          />
+        </div>
         {/* Top Tabs */}
         <div className="flex justify-center animate-fade-in-up">
           <div className="bg-card rounded-full p-1 border border-border shadow-sm">
