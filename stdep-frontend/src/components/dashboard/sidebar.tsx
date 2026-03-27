@@ -25,7 +25,7 @@ const menuItems = [
 
 const generalItems = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
-  { name: "Policies, FAQ, About", href: "/dashboard/help", icon: HelpCircle },
+  { name: "Policies, FAQ, About", href: "/dashboard/info", icon: HelpCircle },
 ]
 
 export function DashboardSidebar() {
