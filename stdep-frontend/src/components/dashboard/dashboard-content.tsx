@@ -42,7 +42,7 @@ const marketGrowthData = [
 ]
 
 export function DashboardContent() {
-  const [activeTab, setActiveTab] = useState<"overview" | "focuses">("overview")
+  const [activeTab, setActiveTab] = useState<"amazon" | "aliexpress">("amazon")
 
   return (
     <div className="ml-[240px] min-h-screen p-4 pl-0">
@@ -51,51 +51,53 @@ export function DashboardContent() {
         <div className="flex justify-center animate-fade-in-up">
           <div className="bg-card rounded-full p-1 border border-border shadow-sm">
             <button
-              onClick={() => setActiveTab("overview")}
+              onClick={() => setActiveTab("amazon")}
               className={cn(
                 "px-6 py-2 rounded-full text-sm font-medium transition-colors",
-                activeTab === "overview"
+                activeTab === "amazon"
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              Overview
+              Amazon
             </button>
             <button
-              onClick={() => setActiveTab("focuses")}
+              onClick={() => setActiveTab("aliexpress")}
               className={cn(
                 "px-6 py-2 rounded-full text-sm font-medium transition-colors",
-                activeTab === "focuses"
+                activeTab === "aliexpress"
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              Focuses
+              AliExpress
             </button>
           </div>
         </div>
 
-        {/* First Row */}
+        {/* First Row (content can be customized per tab) */}
         <div className="grid grid-cols-3 gap-4">
-          {/* Market Valuation */}
+          {/* Cluster Visual Placeholder */}
           <Card className="border border-border shadow-sm animate-slide-in-right" style={{ animationDelay: "100ms" }}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-foreground">Market Valuation</CardTitle>
+              <CardTitle className="text-lg font-bold text-foreground">
+                {activeTab === "amazon" ? "Amazon Clusters" : "AliExpress Clusters"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-4xl font-bold text-foreground">+11%</span>
-                <ArrowUp className="w-6 h-6 text-primary" />
-              </div>
-              <p className="text-sm text-muted-foreground mb-6">Increase compared to last week</p>
-              <div className="flex items-end justify-between">
-                <p className="text-sm text-muted-foreground underline cursor-pointer hover:text-foreground">
-                  Full Market Analysis Report
-                </p>
-                <div className="text-right">
-                  <p className="text-3xl font-bold text-foreground">11</p>
-                  <p className="text-xs text-muted-foreground">Markets analyzed this week</p>
+              {/* Placeholder cluster visual - replace with real data later */}
+              <div className="flex flex-col items-center justify-center h-48">
+                <div className="flex gap-6 mb-2">
+                  <div className="w-16 h-16 rounded-full bg-blue-300 flex items-center justify-center text-lg font-bold text-white">A</div>
+                  <div className="w-16 h-16 rounded-full bg-green-300 flex items-center justify-center text-lg font-bold text-white">B</div>
+                  <div className="w-16 h-16 rounded-full bg-yellow-300 flex items-center justify-center text-lg font-bold text-white">C</div>
                 </div>
+                <div className="flex gap-6">
+                  <span className="text-xs text-muted-foreground">Cluster 1</span>
+                  <span className="text-xs text-muted-foreground">Cluster 2</span>
+                  <span className="text-xs text-muted-foreground">Cluster 3</span>
+                </div>
+                <div className="mt-4 text-xs text-muted-foreground italic">(Placeholder: real cluster data will appear here)</div>
               </div>
             </CardContent>
           </Card>
