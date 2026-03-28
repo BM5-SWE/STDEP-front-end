@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,50 +13,29 @@ export default function LoginPage() {
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
-	const [success, setSuccess] = useState("");
 	const router = useRouter();
-
-	// Use env variable if available, fallback to hardcoded URL
-	const API_BASE =
-		process.env.NEXT_PUBLIC_API_BASE || "http://<EC2-PUBLIC-IP>:8000";
 
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError("");
-		setSuccess("");
 		setLoading(true);
 		try {
-			const res = await fetch(`${API_BASE}/auth/login`, {
+			const res = await apiFetch("/auth/login", {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					email,
-					password,
-				}),
+				body: JSON.stringify({ email, password }),
 			});
 			let data;
 			try {
 				data = await res.json();
-			} catch (jsonErr) {
+			} catch {
 				data = {};
 			}
 			if (!res.ok) {
-				setError(
-					data && typeof data.detail === "string"
-						? data.detail
-						: "Login failed",
-				);
+				setError(data?.detail ?? "Login failed");
 			} else {
-				// Store tokens in localStorage (or cookies if you want more security)
-				if (data.access_token && data.refresh_token) {
-					localStorage.setItem("access_token", data.access_token);
-					localStorage.setItem("refresh_token", data.refresh_token);
-				}
-				setSuccess("Login successful!");
-				// Redirect to dashboard after a short delay (or immediately)
-				setTimeout(() => {
-					router.push("/dashboard");
-				}, 500);
+				localStorage.setItem("access_token", data.access_token);
+				localStorage.setItem("refresh_token", data.refresh_token);
+				router.push("/dashboard");
 			}
 		} catch (err) {
 			setError("Network error. Please try again.");
@@ -134,11 +114,7 @@ export default function LoginPage() {
 												{error}
 											</p>
 										)}
-										{success && (
-											<p className="text-xs text-green-600 text-center mt-2">
-												{success}
-											</p>
-										)}
+
 										<p className="text-xs text-muted-foreground text-center mt-4">
 											{"Don't have an account? "}
 											<Link

@@ -1,11 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api"
 import {
   BarChart3,
-  Search,
   History,
   Bookmark,
   Calculator,
@@ -30,6 +31,25 @@ const generalItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const [userName, setUserName] = useState("")
+  const [userRole, setUserRole] = useState("")
+
+  useEffect(() => {
+    apiFetch("/auth/me").then(async (res) => {
+      if (res.ok) {
+        const data = await res.json()
+        setUserName(data.name || data.username || "User")
+        setUserRole(data.role ?? "user")
+      }
+    })
+  }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token")
+    localStorage.removeItem("refresh_token")
+    router.replace("/login")
+  }
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[240px] flex flex-col p-4">
@@ -105,17 +125,17 @@ export function DashboardSidebar() {
               <User className="w-5 h-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">John Doe</p>
-              <p className="text-xs text-muted-foreground">Admin</p>
+              <p className="text-sm font-medium text-foreground">{userName || "..."}</p>
+              <p className="text-xs text-muted-foreground capitalize">{userRole || "..."}</p>
             </div>
           </div>
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full"
           >
             <LogOut className="w-4 h-4" />
             Logout
-          </Link>
+          </button>
         </div>
       </div>
     </aside>

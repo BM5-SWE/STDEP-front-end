@@ -1,12 +1,15 @@
 "use client"
 import Link from "next/link"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -14,21 +17,14 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  // Use env variable if available, fallback to hardcoded URL
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://<EC2-PUBLIC-IP>:8000";
-  console.log(API_BASE)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
+      const res = await apiFetch("/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
           username,
@@ -40,12 +36,15 @@ export default function RegisterPage() {
         let data;
         try {
           data = await res.json();
-        } catch (jsonErr) {
+        } catch {
           data = {};
         }
-        setError((data && typeof data.detail === "string") ? data.detail : "Registration failed");
+        setError(data?.detail ?? "Registration failed");
       } else {
-        setSuccess("Registration successful! You can now log in.");
+        const data = await res.json();
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("refresh_token", data.refresh_token);
+        router.push("/dashboard");
       }
     } catch (err) {
       setError("Network error. Please try again.");
@@ -148,7 +147,6 @@ export default function RegisterPage() {
                       {loading ? "Registering..." : "Register"}
                     </Button>
                     {error && <p className="text-xs text-red-500 text-center mt-2">{error}</p>}
-                    {success && <p className="text-xs text-green-600 text-center mt-2">{success}</p>}
                     <p className="text-xs text-muted-foreground text-center mt-4">
                       {"Already have an account? "}
                       <Link href="/login" className="underline hover:text-foreground">
