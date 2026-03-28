@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuthGuard } from "@/hooks/use-auth-guard"
 import {
   Area,
   AreaChart,
@@ -44,6 +45,7 @@ const marketGrowthData = [
 
 
 export function DashboardContent() {
+  useAuthGuard()
   const [activeTab, setActiveTab] = useState<"amazon" | "aliexpress">("amazon")
   const [query, setQuery] = useState("")
 
