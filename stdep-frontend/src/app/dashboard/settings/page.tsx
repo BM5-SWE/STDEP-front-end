@@ -1,26 +1,66 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { apiFetch } from "@/lib/api";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 
 export default function SettingsPage() {
+	useAuthGuard();
+	const router = useRouter();
 	const [email, setEmail] = useState("");
 	const [name, setName] = useState("");
+	const [username, setUsername] = useState("");
 	const [showDelete, setShowDelete] = useState(false);
 	const [success, setSuccess] = useState("");
+	const [error, setError] = useState("");
+	const [loading, setLoading] = useState(false);
 
-	const handleSave = (e: React.FormEvent) => {
+	// Pre-fill form with current user data
+	useEffect(() => {
+		apiFetch("/auth/me").then(async (res) => {
+			if (res.ok) {
+				const data = await res.json();
+				setName(data.name ?? "");
+				setEmail(data.email ?? "");
+				setUsername(data.username ?? "");
+			}
+		});
+	}, []);
+
+	const handleSave = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setSuccess("Settings updated (mock)");
-		setTimeout(() => setSuccess(""), 2000);
+		setError("");
+		setSuccess("");
+		setLoading(true);
+		try {
+			const res = await apiFetch("/auth/user", {
+				method: "PUT",
+				body: JSON.stringify({ name, email, username }),
+			});
+			if (res.ok) {
+				setSuccess("Settings updated successfully.");
+				setTimeout(() => setSuccess(""), 3000);
+			} else {
+				const data = await res.json();
+				setError(data?.detail ?? "Update failed.");
+			}
+		} catch {
+			setError("Network error. Please try again.");
+		} finally {
+			setLoading(false);
+		}
 	};
 
-	const handleDelete = () => {
-		// In real app, call API and logout
+	const handleDelete = async () => {
 		setShowDelete(false);
-		setSuccess("Account deleted. Logging out...");
-		setTimeout(() => {
-			// window.location.href = "/login";
-		}, 1500);
+		try {
+			await apiFetch("/auth/user", { method: "DELETE" });
+		} finally {
+			localStorage.removeItem("access_token");
+			localStorage.removeItem("refresh_token");
+			router.replace("/login");
+		}
 	};
 
 	return (
@@ -64,6 +104,19 @@ export default function SettingsPage() {
 							/>
 						</div>
 						<div>
+							<label htmlFor="username" className="block font-medium mb-1">
+								Username
+							</label>
+							<input
+								id="username"
+								type="text"
+								value={username}
+								onChange={(e) => setUsername(e.target.value)}
+								className="border rounded px-3 py-2 w-full"
+								placeholder="Enter your username"
+							/>
+						</div>
+						<div>
 							<label htmlFor="email" className="block font-medium mb-1">
 								Email
 							</label>
@@ -78,13 +131,13 @@ export default function SettingsPage() {
 						</div>
 						<button
 							type="submit"
-							className="bg-foreground text-background px-5 py-2 rounded font-medium hover:bg-foreground/90 transition"
+							disabled={loading}
+							className="bg-foreground text-background px-5 py-2 rounded font-medium hover:bg-foreground/90 transition disabled:opacity-50"
 						>
-							Save Changes
+							{loading ? "Saving..." : "Save Changes"}
 						</button>
-						{success && (
-							<div className="text-green-600 text-sm mt-2">{success}</div>
-						)}
+						{success && <div className="text-green-600 text-sm mt-2">{success}</div>}
+						{error && <div className="text-destructive text-sm mt-2">{error}</div>}
 					</form>
 					<div className="mt-10 border-t pt-6">
 						<button

@@ -1,39 +1,36 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { apiFetch } from "@/lib/api";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 
-// Placeholder data structure for saved products
 type Product = {
 	id: string;
-	name: string;
-	platform: "Amazon" | "AliExpress";
-	price: string;
-	category: string;
+	product_name: string;
+	platform: string;
+	price: number | null;
+	currency: string | null;
+	category: string | null;
+	platform_url: string | null;
+	product_image_url: string | null;
 };
 
-const mockProducts: Product[] = [
-	{
-		id: "1",
-		name: "Wireless Earbuds",
-		platform: "Amazon",
-		price: "$29.99",
-		category: "Electronics",
-	},
-	{
-		id: "2",
-		name: "LED Makeup Mirror",
-		platform: "AliExpress",
-		price: "$15.50",
-		category: "Beauty & Grooming",
-	},
-];
-
 export default function SavedPage() {
+	useAuthGuard();
+	const [products, setProducts] = useState<Product[]>([]);
 	const [filter, setFilter] = useState("");
 	const [selected, setSelected] = useState<Product | null>(null);
+	const [loading, setLoading] = useState(true);
 
-	const filteredProducts = mockProducts.filter((p) =>
-		p.name.toLowerCase().includes(filter.toLowerCase()),
+	useEffect(() => {
+		apiFetch("/api/saved-products")
+			.then((res) => (res.ok ? res.json() : []))
+			.then((data) => setProducts(data))
+			.finally(() => setLoading(false));
+	}, []);
+
+	const filteredProducts = products.filter((p) =>
+		p.product_name.toLowerCase().includes(filter.toLowerCase()),
 	);
 
 	return (
@@ -74,34 +71,43 @@ export default function SavedPage() {
 						/>
 					</div>
 					<div className="rounded-2xl bg-card/80 border border-border shadow-sm p-6">
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-							{filteredProducts.length === 0 ? (
-								<div className="col-span-full text-muted-foreground">
-									No products found.
-								</div>
-							) : (
-								filteredProducts.map((product) => (
-									<div
-										key={product.id}
-										className="border rounded-lg p-4 bg-gradient-to-br from-[#f7fafc] to-[#e3e8ee] dark:from-[#23272e] dark:to-[#181a1b] cursor-pointer hover:shadow-md transition-all"
-										onClick={() => setSelected(product)}
-									>
-										<div className="flex justify-between items-center mb-2">
-											<span className="font-semibold">{product.name}</span>
-											<span className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
-												{product.platform}
-											</span>
-										</div>
-										<div className="text-sm text-muted-foreground mb-1">
-											{product.category}
-										</div>
-										<div className="text-sm font-medium">{product.price}</div>
+						{loading ? (
+							<p className="text-muted-foreground">Loading...</p>
+						) : (
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+								{filteredProducts.length === 0 ? (
+									<div className="col-span-full text-muted-foreground">
+										No products found.
 									</div>
-								))
-							)}
-						</div>
+								) : (
+									filteredProducts.map((product) => (
+										<div
+											key={product.id}
+											className="border rounded-lg p-4 bg-gradient-to-br from-[#f7fafc] to-[#e3e8ee] dark:from-[#23272e] dark:to-[#181a1b] cursor-pointer hover:shadow-md transition-all"
+											onClick={() => setSelected(product)}
+										>
+											<div className="flex justify-between items-center mb-2">
+												<span className="font-semibold">
+													{product.product_name}
+												</span>
+												<span className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
+													{product.platform}
+												</span>
+											</div>
+											<div className="text-sm text-muted-foreground mb-1">
+												{product.category ?? "—"}
+											</div>
+											<div className="text-sm font-medium">
+												{product.price != null
+													? `${product.currency ?? ""} ${product.price}`.trim()
+													: "—"}
+											</div>
+										</div>
+									))
+								)}
+							</div>
+						)}
 					</div>
-					{/* Product Details Modal */}
 					{selected && (
 						<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
 							<div className="bg-background rounded-lg shadow-lg p-6 min-w-[320px] max-w-[90vw] relative animate-fade-in-up">
@@ -112,19 +118,35 @@ export default function SavedPage() {
 								>
 									×
 								</button>
-								<h2 className="text-xl font-bold mb-2">{selected.name}</h2>
+								<h2 className="text-xl font-bold mb-2">
+									{selected.product_name}
+								</h2>
 								<div className="mb-2">
 									<span className="font-medium">Platform:</span>{" "}
 									{selected.platform}
 								</div>
 								<div className="mb-2">
 									<span className="font-medium">Category:</span>{" "}
-									{selected.category}
+									{selected.category ?? "—"}
 								</div>
 								<div className="mb-2">
-									<span className="font-medium">Price:</span> {selected.price}
+									<span className="font-medium">Price:</span>{" "}
+									{selected.price != null
+										? `${selected.currency ?? ""} ${selected.price}`.trim()
+										: "—"}
 								</div>
-								{/* Add more details here as needed */}
+								{selected.platform_url && (
+									<div className="mb-2">
+										<a
+											href={selected.platform_url}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="text-primary underline text-sm"
+										>
+											View on {selected.platform}
+										</a>
+									</div>
+								)}
 							</div>
 						</div>
 					)}

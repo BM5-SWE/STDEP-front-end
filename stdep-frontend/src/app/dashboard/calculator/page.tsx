@@ -1,39 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { apiFetch } from "@/lib/api";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// Mock products (should be shared in real app)
 type Product = {
 	id: string;
-	name: string;
-	platform: "Amazon" | "AliExpress";
-	price: string;
-	category: string;
+	product_name: string;
+	platform: string;
+	price: number | null;
+	currency: string | null;
+	category: string | null;
 };
-const mockProducts: Product[] = [
-	{
-		id: "1",
-		name: "Wireless Earbuds",
-		platform: "Amazon",
-		price: "$29.99",
-		category: "Electronics",
-	},
-	{
-		id: "2",
-		name: "LED Makeup Mirror",
-		platform: "AliExpress",
-		price: "$15.50",
-		category: "Beauty & Grooming",
-	},
-];
 
 export default function MarginCalculatorPage() {
+	useAuthGuard();
+	const [savedProducts, setSavedProducts] = useState<Product[]>([]);
 	const [activeTab, setActiveTab] = useState<"calculator" | "estimator">(
 		"calculator",
 	);
@@ -54,6 +42,12 @@ export default function MarginCalculatorPage() {
 	} | null>(null);
 	const [estimateError, setEstimateError] = useState<string | null>(null);
 	const [isEstimating, setIsEstimating] = useState(false);
+
+	useEffect(() => {
+		apiFetch("/api/saved-products")
+			.then((r) => r.ok ? r.json() : [])
+			.then((data) => setSavedProducts(data));
+	}, []);
 
 	const calculation = useMemo(() => {
 		const price = Number.parseFloat(bulkPrice);
@@ -109,7 +103,7 @@ export default function MarginCalculatorPage() {
 
 		try {
 			setIsEstimating(true);
-			const response = await fetch("http://localhost:8000/gemini/estimate", {
+			const response = await apiFetch("/gemini/estimate", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
@@ -201,32 +195,36 @@ export default function MarginCalculatorPage() {
 									Select a Saved Product for Margin Estimation
 								</h2>
 								<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-									{mockProducts.map((product) => (
+									{savedProducts.length === 0 ? (
+										<p className="text-muted-foreground text-sm col-span-full">No saved products yet. Save a product first.</p>
+									) : savedProducts.map((product) => (
 										<button
 											key={product.id}
 											className={cn(
 												"border rounded-lg p-4 bg-background/80 text-left hover:shadow-md transition-all",
-												productName === product.name
+												productName === product.product_name
 													? "border-primary ring-2 ring-primary"
 													: "",
 											)}
 											onClick={() => {
-												setProductName(product.name);
+												setProductName(product.product_name);
 												setBrand(product.platform);
-												setCategory(product.category);
-												setPrice(product.price.replace("$", ""));
+												setCategory(product.category ?? "");
+												setPrice(product.price != null ? String(product.price) : "");
 											}}
 										>
 											<div className="flex justify-between items-center mb-2">
-												<span className="font-semibold">{product.name}</span>
+												<span className="font-semibold">{product.product_name}</span>
 												<span className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
 													{product.platform}
 												</span>
 											</div>
 											<div className="text-sm text-muted-foreground mb-1">
-												{product.category}
+												{product.category ?? "—"}
 											</div>
-											<div className="text-sm font-medium">{product.price}</div>
+											<div className="text-sm font-medium">
+												{product.price != null ? `${product.currency ?? ""} ${product.price}`.trim() : "—"}
+											</div>
 										</button>
 									))}
 								</div>
