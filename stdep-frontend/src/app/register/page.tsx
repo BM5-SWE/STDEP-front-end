@@ -21,6 +21,10 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!email.trim() || !username.trim() || !password.trim()) {
+      setError("Email, username, and password are required.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await apiFetch("/auth/register", {
