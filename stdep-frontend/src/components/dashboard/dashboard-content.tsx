@@ -95,11 +95,12 @@ export function DashboardContent() {
       .catch(() => {})
   }, [])
 
-  const handleSearch = (platform: "amazon" | "aliexpress") => {
-    if (!query.trim()) return
-    router.push(
-      `/dashboard/search?q=${encodeURIComponent(query.trim())}&platform=${platform}`
-    )
+  const [platform, setPlatform] = useState<"amazon" | "aliexpress">("aliexpress")
+
+  const handleSearch = () => {
+    const params = new URLSearchParams({ platform })
+    if (query.trim()) params.set("q", query.trim())
+    router.push(`/dashboard/search?${params.toString()}`)
   }
 
   const getPrice = (p: TopProduct) =>
@@ -111,29 +112,44 @@ export function DashboardContent() {
 
         {/* Search Bar */}
         <div className="flex justify-center animate-fade-in-up">
-          <div className="flex gap-2 w-full max-w-2xl">
+          <div className="flex gap-2 w-full max-w-2xl items-center">
+            <div className="flex bg-card rounded-full p-1 border border-border shadow-sm shrink-0">
+              <button
+                onClick={() => setPlatform("aliexpress")}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                  platform === "aliexpress"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                AliExpress
+              </button>
+              <button
+                onClick={() => setPlatform("amazon")}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                  platform === "amazon"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Amazon
+              </button>
+            </div>
             <Input
               type="text"
-              placeholder="Search for products (e.g. water bottle, gaming mouse...)"
+              placeholder={`Search ${platform === "amazon" ? "Amazon" : "AliExpress"} products...`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleSearch("aliexpress")
+                if (e.key === "Enter") handleSearch()
               }}
               className="border border-border shadow-sm"
             />
-            <Button
-              onClick={() => handleSearch("aliexpress")}
-              className="whitespace-nowrap"
-            >
-              AliExpress
-            </Button>
-            <Button
-              onClick={() => handleSearch("amazon")}
-              variant="outline"
-              className="whitespace-nowrap"
-            >
-              Amazon
+            <Button onClick={handleSearch} className="shrink-0">
+              <Search className="w-4 h-4 mr-1.5" />
+              Search
             </Button>
           </div>
         </div>
