@@ -14,19 +14,24 @@ import {
   HelpCircle,
   LogOut,
   User,
+  Search,
+  Star,
+  Layers,
 } from "lucide-react"
 
 const menuItems = [
-  { name: "Analytics", href: "/dashboard", icon: BarChart3 },
-  // { name: "Query / Search", href: "/dashboard/search", icon: Search }, // Removed, now in dashboard
+  { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
+  { name: "Search", href: "/dashboard/search", icon: Search },
+  { name: "Favourites", href: "/dashboard/favourites", icon: Star },
+  { name: "Categories", href: "/dashboard/categories", icon: Layers },
   { name: "History", href: "/dashboard/history", icon: History },
-  { name: "Saved", href: "/dashboard/saved", icon: Bookmark },
+  { name: "Saved Products", href: "/dashboard/saved", icon: Bookmark },
   { name: "Margin Calculator", href: "/dashboard/calculator", icon: Calculator },
 ]
 
 const generalItems = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
-  { name: "Policies, FAQ, About", href: "/dashboard/info", icon: HelpCircle },
+  { name: "Info & FAQ", href: "/dashboard/info", icon: HelpCircle },
 ]
 
 export function DashboardSidebar() {
@@ -68,7 +73,10 @@ export function DashboardSidebar() {
           </p>
           <nav className="flex flex-col gap-1">
             {menuItems.map((item) => {
-              const isActive = pathname === item.href
+              const isActive =
+                item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname.startsWith(item.href)
               return (
                 <Link
                   key={item.name}
