@@ -101,11 +101,11 @@ function CategoriesContent() {
             <p className="text-muted-foreground">Loading categories...</p>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="columns-1 md:columns-2 gap-3 space-y-3">
                 {systemCategories.map((cat) => (
                   <Card
                     key={cat.id}
-                    className="border border-border shadow-sm"
+                    className="border border-border shadow-sm break-inside-avoid"
                   >
                     <CardHeader className="pb-0">
                       <button
@@ -155,11 +155,11 @@ function CategoriesContent() {
                   <h2 className="text-lg font-semibold mt-8 mb-3">
                     Your Categories
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="columns-1 md:columns-2 gap-3 space-y-3">
                     {userCategories.map((cat) => (
                       <Card
                         key={cat.id}
-                        className="border border-border shadow-sm"
+                        className="border border-border shadow-sm break-inside-avoid"
                       >
                         <CardHeader className="pb-0">
                           <button

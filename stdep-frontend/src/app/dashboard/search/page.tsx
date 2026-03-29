@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, Suspense } from "react"
+import { useEffect, useState, useCallback, useRef, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { apiFetch } from "@/lib/api"
@@ -8,19 +8,22 @@ import { useAuthGuard } from "@/hooks/use-auth-guard"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Star, RefreshCw, Loader2, ExternalLink } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  Search,
+  Star,
+  RefreshCw,
+  Loader2,
+  ExternalLink,
+} from "lucide-react"
 
 type ScoredProduct = {
-  // Common
   title: string
   opportunity_score: number
   demand_score?: number
   structural_score?: number
   pricing_score?: number
   confidence_score?: number
-
-  // AliExpress specific
   product_id?: string
   effective_price?: number
   sale_price?: number
@@ -34,8 +37,6 @@ type ScoredProduct = {
   cluster_description?: string
   cluster_color?: string
   durability_score?: number
-
-  // Amazon specific
   asin?: string
   url?: string
   brand?: string
@@ -45,24 +46,18 @@ type ScoredProduct = {
   rating?: number
   reviews_count?: number
   avg_sentiment_score?: number
-  mean_sample_rating?: number
-  sales_volume?: string
-  num_images?: number
-  num_variations?: number
   is_prime_eligible?: boolean
   has_videos?: boolean
-  verified_review_share?: number
   validation_score?: number
 }
 
-type SearchState =
-  | { step: "idle" }
-  | { step: "checking_cache" }
-  | { step: "cached"; data: any; key: string }
-  | { step: "running"; executionArn: string }
-  | { step: "polling"; executionArn: string }
-  | { step: "completed"; data: any; key: string }
-  | { step: "failed"; error: string }
+type PlatformResults = {
+  products: ScoredProduct[]
+  clusterLegend: Record<string, any>
+  key: string
+  query: string
+  isCached: boolean
+}
 
 type CategoryDef = {
   id: string
@@ -73,20 +68,33 @@ function SearchPageContent() {
   useAuthGuard()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const initialQuery = searchParams.get("q") || ""
-  const initialPlatform = (searchParams.get("platform") as "amazon" | "aliexpress") || "aliexpress"
+  const initialPlatform =
+    (searchParams.get("platform") as "amazon" | "aliexpress") || "aliexpress"
   const presetCategory = searchParams.get("category") || null
 
   const [query, setQuery] = useState(initialQuery)
   const [platform, setPlatform] = useState<"amazon" | "aliexpress">(initialPlatform)
-  const [state, setState] = useState<SearchState>({ step: "idle" })
-  const [products, setProducts] = useState<ScoredProduct[]>([])
-  const [clusterLegend, setClusterLegend] = useState<Record<string, any>>({})
+  const [isSearching, setIsSearching] = useState(false)
+  const [statusMessage, setStatusMessage] = useState("")
+  const [error, setError] = useState("")
+
+  // Per-platform result cache
+  const [resultsByPlatform, setResultsByPlatform] = useState<
+    Record<string, PlatformResults>
+  >({})
+
+  // Favourite state
   const [categories, setCategories] = useState<CategoryDef[]>([])
-  const [favouriteModal, setFavouriteModal] = useState<ScoredProduct | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState(presetCategory || "uncategorized")
-  const [favourited, setFavourited] = useState<Set<string>>(new Set())
+  const [favouriteModal, setFavouriteModal] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState(
+    presetCategory || "uncategorized"
+  )
+  const [isSaved, setIsSaved] = useState(false)
+
+  const currentResults = resultsByPlatform[platform] || null
 
   // Load categories for favourite modal
   useEffect(() => {
@@ -98,76 +106,27 @@ function SearchPageContent() {
       .catch(() => {})
   }, [])
 
-  const doSearch = useCallback(
-    async (searchQuery: string, searchPlatform: string, forceFresh = false) => {
-      if (!searchQuery.trim()) return
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current)
+    }
+  }, [])
 
-      setState({ step: "checking_cache" })
-      setProducts([])
-
-      try {
-        // If force fresh, skip cache check — trigger pipeline directly
-        if (forceFresh) {
-          const res = await apiFetch("/api/data/search", {
-            method: "POST",
-            body: JSON.stringify({
-              query: searchQuery,
-              platform: searchPlatform,
-            }),
-          })
-          const data = await res.json()
-
-          if (data.status === "cached") {
-            setProducts(data.data?.products || [])
-            setClusterLegend(data.data?.cluster_legend || {})
-            setState({ step: "cached", data: data.data, key: data.key })
-            return
-          }
-
-          if (data.status === "started") {
-            setState({ step: "running", executionArn: data.execution_arn })
-            pollStatus(data.execution_arn, searchQuery, searchPlatform)
-            return
-          }
-
-          setState({ step: "failed", error: data.detail || "Search failed" })
-          return
-        }
-
-        // Normal flow: try cache first via the search endpoint
-        const res = await apiFetch("/api/data/search", {
-          method: "POST",
-          body: JSON.stringify({
-            query: searchQuery,
-            platform: searchPlatform,
-          }),
-        })
-        const data = await res.json()
-
-        if (data.status === "cached") {
-          setProducts(data.data?.products || [])
-          setClusterLegend(data.data?.cluster_legend || {})
-          setState({ step: "cached", data: data.data, key: data.key })
-        } else if (data.status === "started") {
-          setState({ step: "running", executionArn: data.execution_arn })
-          pollStatus(data.execution_arn, searchQuery, searchPlatform)
-        } else {
-          setState({ step: "failed", error: data.detail || "Search failed" })
-        }
-      } catch (err) {
-        setState({
-          step: "failed",
-          error: err instanceof Error ? err.message : "Network error",
-        })
-      }
+  const storeResults = useCallback(
+    (p: string, data: any, key: string, q: string, cached: boolean) => {
+      const products = data?.products || []
+      const clusterLegend = data?.cluster_legend || {}
+      setResultsByPlatform((prev) => ({
+        ...prev,
+        [p]: { products, clusterLegend, key, query: q, isCached: cached },
+      }))
     },
     []
   )
 
   const pollStatus = useCallback(
-    async (arn: string, q: string, p: string) => {
-      setState({ step: "polling", executionArn: arn })
-
+    (arn: string, q: string, p: string) => {
       const poll = async () => {
         try {
           const res = await apiFetch("/api/data/search/status", {
@@ -181,23 +140,80 @@ function SearchPageContent() {
           const data = await res.json()
 
           if (data.status === "completed" && data.data) {
-            setProducts(data.data.products || [])
-            setClusterLegend(data.data.cluster_legend || {})
-            setState({ step: "completed", data: data.data, key: data.key })
+            storeResults(p, data.data, data.key, q, false)
+            setIsSearching(false)
+            setStatusMessage("")
+            setIsSaved(false)
           } else if (data.status === "failed") {
-            setState({ step: "failed", error: data.error || "Pipeline failed" })
+            setError(data.error || "Pipeline failed")
+            setIsSearching(false)
+            setStatusMessage("")
           } else {
-            // Still running — poll again in 3 seconds
-            setTimeout(poll, 3000)
+            // Still running — poll again
+            setStatusMessage("Pipeline is running — this may take 30-60 seconds...")
+            pollRef.current = setTimeout(poll, 3000)
           }
         } catch {
-          setTimeout(poll, 5000)
+          // Retry on network error
+          pollRef.current = setTimeout(poll, 5000)
         }
       }
 
       poll()
     },
-    []
+    [storeResults]
+  )
+
+  const doSearch = useCallback(
+    async (searchQuery: string, searchPlatform: string) => {
+      if (!searchQuery.trim()) return
+      setError("")
+      setIsSearching(true)
+      setStatusMessage("Checking for cached results...")
+      setIsSaved(false)
+
+      // Stop any existing polling
+      if (pollRef.current) {
+        clearTimeout(pollRef.current)
+        pollRef.current = null
+      }
+
+      try {
+        const res = await apiFetch("/api/data/search", {
+          method: "POST",
+          body: JSON.stringify({
+            query: searchQuery,
+            platform: searchPlatform,
+          }),
+        })
+        const data = await res.json()
+
+        if (!res.ok) {
+          setError(data.detail || "Search failed")
+          setIsSearching(false)
+          setStatusMessage("")
+          return
+        }
+
+        if (data.status === "cached") {
+          storeResults(searchPlatform, data.data, data.key, searchQuery, true)
+          setIsSearching(false)
+          setStatusMessage("")
+        } else if (data.status === "started") {
+          setStatusMessage("Pipeline started — waiting for results...")
+          pollStatus(data.execution_arn, searchQuery, searchPlatform)
+        } else {
+          setError("Unexpected response from server")
+          setIsSearching(false)
+          setStatusMessage("")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Network error")
+        setIsSearching(false)
+        setStatusMessage("")
+      }
+    },
+    [storeResults, pollStatus]
   )
 
   // Auto-search if query param present
@@ -209,36 +225,49 @@ function SearchPageContent() {
 
   const handleSearch = () => {
     if (!query.trim()) return
-    // Update URL
     router.replace(
       `/dashboard/search?q=${encodeURIComponent(query.trim())}&platform=${platform}`
     )
     doSearch(query.trim(), platform)
   }
 
-  const handleFavourite = async (product: ScoredProduct) => {
+  const handlePlatformSwitch = (newPlatform: "amazon" | "aliexpress") => {
+    if (newPlatform === platform) return
+    // Stop any active polling
+    if (pollRef.current) {
+      clearTimeout(pollRef.current)
+      pollRef.current = null
+    }
+    setPlatform(newPlatform)
+    setIsSearching(false)
+    setStatusMessage("")
+    setError("")
+    setIsSaved(false)
+    // Results for the new platform will be loaded from resultsByPlatform cache
+  }
+
+  const handleSaveSearch = async () => {
     if (presetCategory) {
-      // Category already known from browse flow
-      await saveFavourite(presetCategory, "suggested")
-      const id = product.product_id || product.asin || product.title
-      setFavourited((prev) => new Set(prev).add(id))
+      await doSaveFavourite(presetCategory, "suggested")
     } else {
-      setFavouriteModal(product)
+      setFavouriteModal(true)
     }
   }
 
-  const saveFavourite = async (categoryId: string, source: string) => {
+  const doSaveFavourite = async (categoryId: string, source: string) => {
+    const q = currentResults?.query || query
     try {
       await apiFetch(`/api/data/favourites/${platform}`, {
         method: "POST",
         body: JSON.stringify({
           category_id: categoryId,
-          query: query,
+          query: q,
           source,
         }),
       })
+      setIsSaved(true)
     } catch {}
-    setFavouriteModal(null)
+    setFavouriteModal(false)
   }
 
   const getPrice = (p: ScoredProduct) =>
@@ -246,21 +275,18 @@ function SearchPageContent() {
 
   const getRating = (p: ScoredProduct) => p.star_rating ?? p.rating ?? null
 
-  const isRunning =
-    state.step === "checking_cache" ||
-    state.step === "running" ||
-    state.step === "polling"
+  const products = currentResults?.products || []
 
   return (
     <main className="min-h-screen bg-background">
       <DashboardSidebar />
       <div className="ml-[240px] min-h-screen p-4 pl-0">
         <div className="flex flex-col gap-4 max-w-6xl mx-auto">
-          {/* Search Bar */}
+          {/* Search Bar + Platform Toggle */}
           <div className="flex gap-2 animate-fade-in-up">
             <div className="flex bg-card rounded-full p-1 border border-border shadow-sm">
               <button
-                onClick={() => setPlatform("aliexpress")}
+                onClick={() => handlePlatformSwitch("aliexpress")}
                 className={cn(
                   "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
                   platform === "aliexpress"
@@ -271,7 +297,7 @@ function SearchPageContent() {
                 AliExpress
               </button>
               <button
-                onClick={() => setPlatform("amazon")}
+                onClick={() => handlePlatformSwitch("amazon")}
                 className={cn(
                   "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
                   platform === "amazon"
@@ -291,10 +317,10 @@ function SearchPageContent() {
                 if (e.key === "Enter") handleSearch()
               }}
               className="flex-1 border border-border shadow-sm"
-              disabled={isRunning}
+              disabled={isSearching}
             />
-            <Button onClick={handleSearch} disabled={isRunning}>
-              {isRunning ? (
+            <Button onClick={handleSearch} disabled={isSearching}>
+              {isSearching ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Search className="w-4 h-4" />
@@ -302,55 +328,93 @@ function SearchPageContent() {
             </Button>
           </div>
 
-          {/* Status Messages */}
-          {state.step === "checking_cache" && (
+          {/* Status / Error Messages */}
+          {statusMessage && (
             <div className="text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Checking for cached results...
+              {statusMessage}
             </div>
           )}
-          {(state.step === "running" || state.step === "polling") && (
-            <div className="text-sm text-muted-foreground flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Pipeline is running — this may take 30-60 seconds...
-            </div>
+          {error && (
+            <div className="text-sm text-destructive">Error: {error}</div>
           )}
-          {state.step === "cached" && (
-            <div className="flex items-center gap-3 text-sm">
-              <span className="text-muted-foreground">
-                Showing cached results ({products.length} products)
-              </span>
-              <button
-                onClick={() => doSearch(query, platform, true)}
-                className="text-xs text-primary hover:underline flex items-center gap-1"
+
+          {/* Results Header */}
+          {products.length > 0 && !isSearching && (
+            <div className="flex items-center justify-between animate-fade-in-up">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">
+                  {products.length} products
+                  {currentResults?.query && (
+                    <> for &ldquo;{currentResults.query}&rdquo;</>
+                  )}
+                  {currentResults?.isCached && (
+                    <span className="ml-1 text-xs">(cached)</span>
+                  )}
+                </span>
+                {currentResults?.isCached && (
+                  <button
+                    onClick={() =>
+                      doSearch(currentResults.query || query, platform)
+                    }
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                )}
+              </div>
+
+              {/* Save Search Button */}
+              <Button
+                variant={isSaved ? "outline" : "default"}
+                size="sm"
+                onClick={handleSaveSearch}
+                disabled={isSaved}
+                className="flex items-center gap-1.5"
               >
-                <RefreshCw className="w-3 h-3" /> Use fresh data
-              </button>
-            </div>
-          )}
-          {state.step === "completed" && (
-            <div className="text-sm text-muted-foreground">
-              Pipeline completed — {products.length} products scored
-            </div>
-          )}
-          {state.step === "failed" && (
-            <div className="text-sm text-destructive">
-              Error: {(state as any).error}
+                <Star
+                  className="w-4 h-4"
+                  fill={isSaved ? "currentColor" : "none"}
+                />
+                {isSaved ? "Search saved" : "Save this search"}
+              </Button>
             </div>
           )}
 
-          {/* Results */}
+          {/* Cluster Legend */}
+          {currentResults?.clusterLegend &&
+            Object.keys(currentResults.clusterLegend).length > 0 && (
+              <div className="flex flex-wrap gap-2 animate-fade-in-up">
+                {Object.entries(currentResults.clusterLegend).map(
+                  ([id, info]: [string, any]) => (
+                    <span
+                      key={id}
+                      className="text-xs px-2.5 py-1 rounded-full border"
+                      style={{
+                        borderColor: info.color || undefined,
+                        color: info.color || undefined,
+                      }}
+                      title={info.description || ""}
+                    >
+                      {info.name}
+                    </span>
+                  )
+                )}
+              </div>
+            )}
+
+          {/* Product Grid */}
           {products.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 animate-fade-in-up">
               {products.map((product, i) => {
                 const price = getPrice(product)
                 const rating = getRating(product)
-                const id = product.product_id || product.asin || product.title
-                const isFav = favourited.has(id)
+                const id =
+                  product.product_id || product.asin || `${product.title}-${i}`
 
                 return (
                   <Card
-                    key={id || i}
+                    key={id}
                     className="border border-border shadow-sm hover:shadow-md transition-all"
                   >
                     <CardContent className="p-3">
@@ -385,7 +449,6 @@ function SearchPageContent() {
                         </span>
                       </div>
 
-                      {/* Platform-specific details */}
                       <div className="flex flex-wrap gap-1 mb-2">
                         {rating != null && (
                           <span className="text-xs px-2 py-0.5 rounded bg-muted">
@@ -415,7 +478,6 @@ function SearchPageContent() {
                           )}
                       </div>
 
-                      {/* Cluster badge */}
                       {product.cluster_name && (
                         <span
                           className="text-xs inline-block px-2 py-0.5 rounded mb-2"
@@ -430,48 +492,50 @@ function SearchPageContent() {
                         </span>
                       )}
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 mt-1">
-                        <button
-                          onClick={() => handleFavourite(product)}
-                          className={cn(
-                            "p-1.5 rounded hover:bg-muted transition-colors",
-                            isFav ? "text-yellow-500" : "text-muted-foreground"
-                          )}
-                          title="Add to favourites"
-                        >
-                          <Star
-                            className="w-4 h-4"
-                            fill={isFav ? "currentColor" : "none"}
-                          />
-                        </button>
-                        {product.url && (
+                      {product.url && (
+                        <div className="mt-1">
                           <a
                             href={product.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground"
-                            title="View on Amazon"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
                           >
-                            <ExternalLink className="w-4 h-4" />
+                            <ExternalLink className="w-3 h-3" />
+                            View listing
                           </a>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )
               })}
             </div>
           )}
+
+          {/* Empty state when platform switched with no results */}
+          {!isSearching && !statusMessage && products.length === 0 && !error && (
+            <div className="text-center py-16 text-muted-foreground">
+              <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-lg">
+                Search {platform === "amazon" ? "Amazon" : "AliExpress"} for
+                products
+              </p>
+              <p className="text-sm mt-1">
+                Enter a query above to find and score products
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Favourite Category Modal */}
+        {/* Save Search Category Modal */}
         {favouriteModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="bg-background rounded-lg shadow-lg p-6 min-w-[340px] max-w-[90vw] animate-fade-in-up">
-              <h2 className="text-lg font-bold mb-3">Add to a category?</h2>
+              <h2 className="text-lg font-bold mb-3">Save this search</h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Choose a category for this search or skip to leave uncategorized.
+                Choose a category for &ldquo;
+                {currentResults?.query || query}&rdquo; or skip to leave
+                uncategorized.
               </p>
               <select
                 value={selectedCategory}
@@ -485,16 +549,21 @@ function SearchPageContent() {
                 ))}
               </select>
               <div className="flex gap-2">
-                <Button onClick={() => saveFavourite(selectedCategory, "manual")}>
+                <Button
+                  onClick={() => doSaveFavourite(selectedCategory, "manual")}
+                >
                   Save
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => saveFavourite("uncategorized", "manual")}
+                  onClick={() => doSaveFavourite("uncategorized", "manual")}
                 >
                   Skip
                 </Button>
-                <Button variant="ghost" onClick={() => setFavouriteModal(null)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setFavouriteModal(false)}
+                >
                   Cancel
                 </Button>
               </div>
