@@ -1,248 +1,322 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuthGuard } from "@/hooks/use-auth-guard"
+import { apiFetch } from "@/lib/api"
+import { useRouter } from "next/navigation"
 import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from "recharts"
+  Star,
+  Search,
+  Calculator,
+  History,
+  Layers,
+  ExternalLink,
+  TrendingUp,
+} from "lucide-react"
 
-const topProducts = [
-  { name: "Product A", category: "Category", score: 95 },
-  { name: "Product B", category: "Category", score: 92 },
-  { name: "Product C", category: "Category", score: 89 },
-  { name: "Product D", category: "Category", score: 88 },
-  { name: "Product E", category: "Category", score: 85 },
-]
+type TopProduct = {
+  product_id?: string
+  asin?: string
+  title: string
+  main_image_url?: string
+  effective_price?: number
+  sale_price?: number
+  price?: number
+  opportunity_score: number
+  cluster_name?: string
+  cluster_color?: string
+  star_rating?: number
+  rating?: number
+}
 
-const topCategories = [
-  { name: "Category A", score: 95 },
-  { name: "Category B", score: 92 },
-  { name: "Category C", score: 89 },
-  { name: "Category D", score: 88 },
-  { name: "Category E", score: 85 },
-]
+type CategoryDef = {
+  id: string
+  label: string
+  is_user_generated: boolean
+  suggested_items: string[]
+}
 
-const marketGrowthData = [
-  { month: "Jan", value: 4000 },
-  { month: "Feb", value: 8000 },
-  { month: "Mar", value: 12000 },
-  { month: "Apr", value: 25000 },
-  { month: "May", value: 55000 },
-  { month: "Jun", value: 48000 },
-  { month: "Jul", value: 62000 },
-  { month: "Aug", value: 85000 },
-]
-
+type QueryRecord = {
+  id: string
+  query_text: string
+  platform: string
+  created_at: string
+}
 
 export function DashboardContent() {
   useAuthGuard()
-  const [activeTab, setActiveTab] = useState<"amazon" | "aliexpress">("amazon")
+  const router = useRouter()
   const [query, setQuery] = useState("")
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [categories, setCategories] = useState<CategoryDef[]>([])
+  const [recentQueries, setRecentQueries] = useState<QueryRecord[]>([])
+  const [loadingTop, setLoadingTop] = useState(true)
+  const [loadingCats, setLoadingCats] = useState(true)
+
+  // Fetch weekly top 50
+  useEffect(() => {
+    apiFetch("/api/data/weekly-top")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.products) {
+          setTopProducts(data.products.slice(0, 50))
+        } else if (Array.isArray(data)) {
+          setTopProducts(data.slice(0, 50))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingTop(false))
+  }, [])
+
+  // Fetch categories
+  useEffect(() => {
+    apiFetch("/api/data/categories")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.categories) {
+          setCategories(
+            data.categories.filter((c: CategoryDef) => c.id !== "uncategorized")
+          )
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingCats(false))
+  }, [])
+
+  // Fetch recent queries
+  useEffect(() => {
+    apiFetch("/api/query-history?limit=5")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setRecentQueries(Array.isArray(data) ? data.slice(0, 5) : []))
+      .catch(() => {})
+  }, [])
+
+  const handleSearch = (platform: "amazon" | "aliexpress") => {
+    if (!query.trim()) return
+    router.push(
+      `/dashboard/search?q=${encodeURIComponent(query.trim())}&platform=${platform}`
+    )
+  }
+
+  const getPrice = (p: TopProduct) =>
+    p.effective_price ?? p.sale_price ?? p.price ?? null
 
   return (
     <div className="ml-[240px] min-h-screen p-4 pl-0">
-      <div className="flex flex-col gap-4">
-        {/* Query/Search Bar */}
-        <div className="flex justify-center mb-4 animate-fade-in-up">
-          <Input
-            type="text"
-            placeholder="Search for products, categories, or clusters..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            className="max-w-xl border border-border shadow-sm"
-          />
-        </div>
-        {/* Top Tabs */}
+      <div className="flex flex-col gap-6">
+
+        {/* Search Bar */}
         <div className="flex justify-center animate-fade-in-up">
-          <div className="bg-card rounded-full p-1 border border-border shadow-sm">
-            <button
-              onClick={() => setActiveTab("amazon")}
-              className={cn(
-                "px-6 py-2 rounded-full text-sm font-medium transition-colors",
-                activeTab === "amazon"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Amazon
-            </button>
-            <button
-              onClick={() => setActiveTab("aliexpress")}
-              className={cn(
-                "px-6 py-2 rounded-full text-sm font-medium transition-colors",
-                activeTab === "aliexpress"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
+          <div className="flex gap-2 w-full max-w-2xl">
+            <Input
+              type="text"
+              placeholder="Search for products (e.g. water bottle, gaming mouse...)"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch("aliexpress")
+              }}
+              className="border border-border shadow-sm"
+            />
+            <Button
+              onClick={() => handleSearch("aliexpress")}
+              className="whitespace-nowrap"
             >
               AliExpress
-            </button>
+            </Button>
+            <Button
+              onClick={() => handleSearch("amazon")}
+              variant="outline"
+              className="whitespace-nowrap"
+            >
+              Amazon
+            </Button>
           </div>
         </div>
 
-        {/* First Row (content can be customized per tab) */}
-        <div className="grid grid-cols-3 gap-4">
-          {/* Cluster Visual Placeholder */}
-          <Card className="border border-border shadow-sm animate-slide-in-right" style={{ animationDelay: "100ms" }}>
+        {/* Quick Access */}
+        <div className="grid grid-cols-4 gap-3 animate-fade-in-up">
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex flex-col gap-1"
+            onClick={() => router.push("/dashboard/search?platform=aliexpress")}
+          >
+            <Search className="w-5 h-5" />
+            <span className="text-xs">Search AliExpress</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex flex-col gap-1"
+            onClick={() => router.push("/dashboard/search?platform=amazon")}
+          >
+            <Search className="w-5 h-5" />
+            <span className="text-xs">Search Amazon</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex flex-col gap-1"
+            onClick={() => router.push("/dashboard/calculator")}
+          >
+            <Calculator className="w-5 h-5" />
+            <span className="text-xs">Margin Calculator</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex flex-col gap-1"
+            onClick={() => router.push("/dashboard/categories")}
+          >
+            <Layers className="w-5 h-5" />
+            <span className="text-xs">Browse Categories</span>
+          </Button>
+        </div>
+
+        {/* Recent Queries */}
+        {recentQueries.length > 0 && (
+          <Card className="border border-border shadow-sm animate-fade-in-up">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-foreground">
-                {activeTab === "amazon" ? "Amazon Clusters" : "AliExpress Clusters"}
+              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                <History className="w-5 h-5" /> Recent Queries
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Placeholder cluster visual - replace with real data later */}
-              <div className="flex flex-col items-center justify-center h-48">
-                <div className="flex gap-6 mb-2">
-                  <div className="w-16 h-16 rounded-full bg-blue-300 flex items-center justify-center text-lg font-bold text-white">A</div>
-                  <div className="w-16 h-16 rounded-full bg-green-300 flex items-center justify-center text-lg font-bold text-white">B</div>
-                  <div className="w-16 h-16 rounded-full bg-yellow-300 flex items-center justify-center text-lg font-bold text-white">C</div>
-                </div>
-                <div className="flex gap-6">
-                  <span className="text-xs text-muted-foreground">Cluster 1</span>
-                  <span className="text-xs text-muted-foreground">Cluster 2</span>
-                  <span className="text-xs text-muted-foreground">Cluster 3</span>
-                </div>
-                <div className="mt-4 text-xs text-muted-foreground italic">(Placeholder: real cluster data will appear here)</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Top Products */}
-          <Card className="border border-border shadow-sm animate-slide-in-right" style={{ animationDelay: "200ms" }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-foreground">Top Products</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-2">
-                {topProducts.map((product) => (
-                  <div key={product.name} className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-muted rounded" />
-                    <span className="text-sm text-foreground flex-1">{product.name}</span>
-                    <span className="text-xs text-muted-foreground">{product.category}</span>
-                    <span className="text-xs font-medium bg-foreground text-background px-2 py-0.5 rounded">
-                      {product.score}
+              <div className="flex flex-wrap gap-2">
+                {recentQueries.map((q) => (
+                  <button
+                    key={q.id}
+                    onClick={() =>
+                      router.push(
+                        `/dashboard/search?q=${encodeURIComponent(q.query_text)}&platform=${q.platform}`
+                      )
+                    }
+                    className="text-sm px-3 py-1.5 rounded-full border border-border hover:bg-muted transition-colors"
+                  >
+                    {q.query_text}
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({q.platform})
                     </span>
-                    <span className="text-xs text-muted-foreground underline cursor-pointer hover:text-foreground">
-                      View
-                    </span>
-                  </div>
+                  </button>
                 ))}
               </div>
-              <Button className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg">
-                Expand
-              </Button>
             </CardContent>
           </Card>
+        )}
 
-          {/* Top Categories */}
-          <Card className="border border-border shadow-sm animate-slide-in-right" style={{ animationDelay: "300ms" }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-foreground">Top Categories</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-2">
-                {topCategories.map((category) => (
-                  <div key={category.name} className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-muted rounded" />
-                    <span className="text-sm text-foreground flex-1">{category.name}</span>
-                    <span className="text-xs font-medium bg-foreground text-background px-2 py-0.5 rounded">
-                      {category.score}
-                    </span>
-                    <span className="text-xs text-muted-foreground underline cursor-pointer hover:text-foreground">
-                      View
-                    </span>
-                  </div>
+        {/* Trending on AliExpress */}
+        <Card className="border border-border shadow-sm animate-fade-in-up">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" /> Trending on AliExpress
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingTop ? (
+              <p className="text-muted-foreground text-sm">Loading trending products...</p>
+            ) : topProducts.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No trending data available yet.</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {topProducts.slice(0, 20).map((product, i) => {
+                  const price = getPrice(product)
+                  return (
+                    <div
+                      key={product.product_id || product.asin || i}
+                      className="border rounded-lg p-3 hover:shadow-md transition-all bg-background/80"
+                    >
+                      {product.main_image_url && (
+                        <div className="aspect-square mb-2 rounded overflow-hidden bg-muted">
+                          <img
+                            src={product.main_image_url}
+                            alt={product.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <p className="text-sm font-medium line-clamp-2 mb-1">
+                        {product.title}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        {price != null && (
+                          <span className="text-sm font-semibold">
+                            ${price.toFixed(2)}
+                          </span>
+                        )}
+                        <span className="text-xs font-medium bg-foreground text-background px-2 py-0.5 rounded">
+                          {product.opportunity_score}
+                        </span>
+                      </div>
+                      {product.cluster_name && (
+                        <span
+                          className="text-xs mt-1 inline-block px-2 py-0.5 rounded"
+                          style={{
+                            backgroundColor: product.cluster_color
+                              ? `${product.cluster_color}20`
+                              : undefined,
+                            color: product.cluster_color || undefined,
+                          }}
+                        >
+                          {product.cluster_name}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {topProducts.length > 20 && (
+              <div className="mt-4 text-center">
+                <Button variant="outline" size="sm">
+                  Show all {topProducts.length} products
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Browse Categories Preview */}
+        <Card className="border border-border shadow-sm animate-fade-in-up">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+              <Layers className="w-5 h-5" /> Categories
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingCats ? (
+              <p className="text-muted-foreground text-sm">Loading categories...</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {categories.slice(0, 8).map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() =>
+                      router.push(`/dashboard/categories?open=${cat.id}`)
+                    }
+                    className="border rounded-lg p-3 text-left hover:shadow-md transition-all hover:bg-muted/50"
+                  >
+                    <p className="text-sm font-medium">{cat.label}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {cat.suggested_items.length} suggestions
+                    </p>
+                  </button>
                 ))}
               </div>
-              <Button className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg">
-                Expand
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Second Row */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Placeholder Card */}
-          <Card className="border border-border shadow-sm animate-slide-in-right" style={{ animationDelay: "400ms" }}>
-            <CardContent className="h-[300px] flex items-center justify-center">
-              <p className="text-xl text-muted-foreground">Dashboard Item TBD</p>
-            </CardContent>
-          </Card>
-
-          {/* Market Growth Chart */}
-          <Card className="border border-border shadow-sm animate-slide-in-right" style={{ animationDelay: "500ms" }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-foreground">Market Growth</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={marketGrowthData}>
-                    <defs>
-                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="oklch(0.65 0.12 185)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="oklch(0.65 0.12 185)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="month"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: "oklch(0.5 0.02 250)" }}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: "oklch(0.5 0.02 250)" }}
-                      tickFormatter={(value) => `${value / 1000}k`}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "oklch(1 0 0)",
-                        border: "1px solid oklch(0.9 0.005 250)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke="oklch(0.65 0.12 185)"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorValue)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+            )}
+            {categories.length > 8 && (
+              <div className="mt-3 text-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/dashboard/categories")}
+                >
+                  View all {categories.length} categories
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Third Row */}
-        <div className="grid grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card
-              key={i}
-              className="border border-border shadow-sm animate-slide-in-right"
-              style={{ animationDelay: `${500 + i * 100}ms` }}
-            >
-              <CardContent className="h-[150px] flex items-center justify-center">
-                <p className="text-lg text-muted-foreground">Dashboard Item TBD</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
