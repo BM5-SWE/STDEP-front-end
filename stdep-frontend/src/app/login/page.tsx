@@ -35,7 +35,14 @@ export default function LoginPage() {
 				data = {};
 			}
 			if (!res.ok) {
-				setError(data?.detail ?? "Login failed");
+				const detail = data?.detail;
+				if (typeof detail === "string") {
+					setError(detail);
+				} else if (Array.isArray(detail)) {
+					setError(detail.map((d: { msg?: string }) => d.msg ?? "").filter(Boolean).join(". ") || "Login failed");
+				} else {
+					setError("Login failed");
+				}
 			} else {
 				localStorage.setItem("access_token", data.access_token);
 				localStorage.setItem("refresh_token", data.refresh_token);

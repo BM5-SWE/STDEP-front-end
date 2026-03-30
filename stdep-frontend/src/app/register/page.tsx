@@ -1,8 +1,7 @@
 "use client"
+
 import Link from "next/link"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -96,9 +95,16 @@ export default function RegisterPage() {
         body: JSON.stringify({ email, username, password, access_code: accessCode }),
       })
       if (!res.ok) {
-        let data: Record<string, string> = {}
+        let data: Record<string, unknown> = {}
         try { data = await res.json() } catch {}
-        setError(data?.detail ?? "Registration failed")
+        const detail = data?.detail
+        if (typeof detail === "string") {
+          setError(detail)
+        } else if (Array.isArray(detail)) {
+          setError(detail.map((d: { msg?: string }) => d.msg ?? "").filter(Boolean).join(". ") || "Registration failed")
+        } else {
+          setError("Registration failed")
+        }
       } else {
         const data = await res.json()
         localStorage.setItem("access_token", data.access_token)
@@ -125,10 +131,12 @@ export default function RegisterPage() {
                   SmartTrend
                 </h1>
               </Link>
-              <p className="text-xs text-muted-foreground mt-1 uppercase tracking-[0.2em]">BY BM5</p>
+              <p className="text-xs text-muted-foreground mt-1 uppercase tracking-[0.2em]">
+                BY BM5
+              </p>
             </div>
 
-            {/* Card */}
+            {/* Register Card */}
             <Card className="border border-border shadow-none flex-1 flex flex-col animate-start-hidden animate-fade-in-up animation-delay-200">
               <CardHeader className="text-left pb-3">
                 <CardTitle className="text-xl font-bold text-primary">Register</CardTitle>
@@ -141,70 +149,68 @@ export default function RegisterPage() {
                   <div className="space-y-4 flex-1">
                     <div className="space-y-2 text-left">
                       <Label htmlFor="username">Username</Label>
-                      <Input
-                        id="username"
-                        type="text"
-                        placeholder="Choose a username"
-                        className="rounded-lg"
+                      <Input 
+                        id="username" 
+                        type="text" 
+                        placeholder="Choose a username" 
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
+                        disabled={loading}
+                        required
+                        minLength={3}
+                        maxLength={50}
+                        className="rounded-lg"
                       />
                     </div>
                     <div className="space-y-2 text-left">
                       <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        className="rounded-lg"
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        placeholder="Enter your email" 
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2 text-left">
-                      <Label htmlFor="access-code">Access Code</Label>
-                      <Input
-                        id="access-code"
-                        type="text"
-                        placeholder="Access code"
+                        disabled={loading}
+                        required
                         className="rounded-lg"
-                        value={accessCode}
-                        onChange={(e) => setAccessCode(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2 text-left">
                       <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Create a password"
-                        className="rounded-lg"
+                      <Input 
+                        id="password" 
+                        type="password" 
+                        placeholder="Create a password" 
                         value={password}
-                        onChange={(e) => {
-                          setPassword(e.target.value)
-                          if (!showPasswordRules && e.target.value.length > 0) setShowPasswordRules(true)
-                        }}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={loading}
+                        required
+                        minLength={8}
+                        className="rounded-lg"
                       />
-                      {showPasswordRules && <PasswordStrengthIndicator password={password} />}
+                      <p className="text-xs text-muted-foreground">
+                        Minimum 8 characters
+                      </p>
                     </div>
+                    {error && (
+                      <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+                        {error}
+                      </div>
+                    )}
                   </div>
                   <div className="mt-auto pt-6">
-                    <Button
-                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5"
+                    <Button 
                       type="submit"
                       disabled={loading}
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5"
                     >
                       {loading ? "Registering..." : "Register"}
                     </Button>
-                    {error && <p className="text-xs text-red-500 text-center mt-2">{error}</p>}
                     <p className="text-xs text-muted-foreground text-center mt-4">
-                      Already have an account?{" "}
+                      {"Already have an account? "}
                       <Link href="/login" className="underline hover:text-foreground">
                         Log in here
                       </Link>
-                    </p>
-                    <p className="text-xs text-muted-foreground text-left mt-4">
-                      Don&apos;t have an access code? Please contact your administrator for more information.
                     </p>
                   </div>
                 </form>
@@ -220,7 +226,7 @@ export default function RegisterPage() {
           </div>
         </aside>
 
-        {/* Right Side */}
+        {/* Right Side - Welcome Message */}
         <section className="flex-1">
           <div className="bg-card rounded-2xl h-full p-8 shadow-sm border border-border flex flex-col items-center justify-center text-center animate-slide-in-right">
             <p className="text-sm text-muted-foreground uppercase tracking-[0.3em] mb-4">
@@ -230,8 +236,7 @@ export default function RegisterPage() {
               SmartTrend Analytics
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl leading-relaxed text-balance">
-              Join thousands of businesses using SmartTrend to identify emerging market trends,
-              analyze competitor strategies, and drive growth with data-driven insights.
+              Join thousands of businesses using SmartTrend to identify emerging market trends, analyze competitor strategies, and drive growth with data-driven insights.
             </p>
           </div>
         </section>
