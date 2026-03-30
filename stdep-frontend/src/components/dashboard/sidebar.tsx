@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/api"
 import {
@@ -17,6 +18,8 @@ import {
   Search,
   Star,
   Layers,
+  Moon,
+  Sun,
 } from "lucide-react"
 
 const menuItems = [
@@ -39,6 +42,10 @@ export function DashboardSidebar() {
   const router = useRouter()
   const [userName, setUserName] = useState("")
   const [userRole, setUserRole] = useState("")
+  const { setTheme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
 
   useEffect(() => {
     apiFetch("/auth/me").then(async (res) => {
@@ -56,17 +63,19 @@ export function DashboardSidebar() {
     router.replace("/login")
   }
 
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+  }
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-[240px] flex flex-col p-4">
       <div className="bg-card rounded-2xl flex flex-col h-full p-5 shadow-sm border border-border animate-slide-in-left">
-        {/* Logo */}
         <Link href="/" className="mb-6 animate-start-hidden animate-fade-in-up animation-delay-100">
           <h1 className="text-2xl font-bold text-primary tracking-tight">
             SmartTrend
           </h1>
         </Link>
 
-        {/* Menu Section */}
         <div className="mb-6 animate-start-hidden animate-fade-in-up animation-delay-200">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
             Menu
@@ -96,7 +105,6 @@ export function DashboardSidebar() {
           </nav>
         </div>
 
-        {/* General Section */}
         <div className="mb-6 animate-start-hidden animate-fade-in-up animation-delay-300">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
             General
@@ -120,10 +128,22 @@ export function DashboardSidebar() {
                 </Link>
               )
             })}
+            {mounted && (
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                {resolvedTheme === "dark" ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+                {resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}
+              </button>
+            )}
           </nav>
         </div>
 
-        {/* User Section */}
         <div className="mt-auto animate-start-hidden animate-fade-in-up animation-delay-400">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
             User

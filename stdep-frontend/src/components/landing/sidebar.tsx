@@ -50,7 +50,7 @@ export function Sidebar() {
             <CardHeader className="text-left pb-3">
               <CardTitle className="text-xl font-bold text-primary">Register</CardTitle>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                A 6-digit access code from your admin required.<br />
+                An access code from your admin is required.<br />
                 Click the Register button below to complete registration.
               </p>
             </CardHeader>

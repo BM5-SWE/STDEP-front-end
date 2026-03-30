@@ -166,7 +166,7 @@ export default function RegisterPage() {
                       <Input
                         id="access-code"
                         type="text"
-                        placeholder="6-digit access code"
+                        placeholder="Access code"
                         className="rounded-lg"
                         value={accessCode}
                         onChange={(e) => setAccessCode(e.target.value)}

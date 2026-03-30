@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { apiFetch } from "@/lib/api"
@@ -14,15 +14,14 @@ import {
   Calculator,
   Layers,
   History,
-  TrendingUp,
   Star,
   Package,
   ChevronRight,
-  BarChart2,
   Award,
-  Zap,
-  DollarSign,
   RefreshCw,
+  Info,
+  X,
+  HelpCircle,
 } from "lucide-react"
 
 type TopProduct = {
@@ -60,17 +59,21 @@ type QueryRecord = {
   query_text: string
   platform: string
   created_at: string
-  total_products_returned?: number
-  num_clusters?: number
 }
 
-// Score components config
 const SCORE_COMPONENTS = [
-  { key: "demand_score",    label: "Demand",     color: "#3B82F6" },
-  { key: "structural_score",label: "Structural", color: "#8B5CF6" },
-  { key: "pricing_score",   label: "Pricing",    color: "#10B981" },
-  { key: "durability_score",label: "Durability", color: "#F59E0B" },
-  { key: "validation_score",label: "Validation", color: "#EC4899" },
+  { key: "demand_score",     label: "Demand",     color: "#3B82F6", desc: "Sales volume & velocity" },
+  { key: "structural_score", label: "Structural",  color: "#8B5CF6", desc: "Listing quality & completeness" },
+  { key: "pricing_score",    label: "Pricing",     color: "#10B981", desc: "Price competitiveness" },
+  { key: "durability_score", label: "Durability",  color: "#F59E0B", desc: "Long-term sales consistency" }
+]
+
+const CLUSTER_DEFINITIONS = [
+  { name: "Winners",                    color: "#1D9E75", desc: "High demand, strong fundamentals. Best sourcing targets." },
+  { name: "Full-Price Performers",      color: "#378ADD", desc: "Strong sales without heavy discounting." },
+  { name: "Discount Fighters",          color: "#EF9F27", desc: "Cheap, heavily promoted, but risky quality." },
+  { name: "Overpriced Underperformers", color: "#E24B4A", desc: "High prices, low demand. Avoid." },
+  { name: "Quality Sleepers",           color: "#7F77DD", desc: "Great ratings, low sales. Hidden gems." },
 ]
 
 function MiniScoreBar({ value, color }: { value?: number; color: string }) {
@@ -106,66 +109,6 @@ function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
   )
 }
 
-function ClusterDistributionChart({ products }: { products: TopProduct[] }) {
-  const clusterCounts: Record<string, { count: number; color: string }> = {}
-  for (const p of products) {
-    if (!p.cluster_name) continue
-    if (!clusterCounts[p.cluster_name]) {
-      clusterCounts[p.cluster_name] = { count: 0, color: p.cluster_color || "#888" }
-    }
-    clusterCounts[p.cluster_name].count++
-  }
-
-  const total = products.length
-  const entries = Object.entries(clusterCounts).sort((a, b) => b[1].count - a[1].count)
-  if (entries.length === 0) return null
-
-  return (
-    <div className="space-y-2">
-      {entries.map(([name, { count, color }]) => (
-        <div key={name} className="flex items-center gap-2 text-xs">
-          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-          <span className="w-32 truncate text-muted-foreground">{name}</span>
-          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full transition-all" style={{ width: `${(count / total) * 100}%`, backgroundColor: color }} />
-          </div>
-          <span className="w-6 text-right font-medium text-foreground">{count}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ScoreHistogram({ products }: { products: TopProduct[] }) {
-  // Bucket into 0-20, 20-40, 40-60, 60-80, 80-100
-  const buckets = [0, 0, 0, 0, 0]
-  const labels = ["0–20", "20–40", "40–60", "60–80", "80–100"]
-  const colors = ["#EF4444", "#EF9F27", "#3B82F6", "#1D9E75", "#10B981"]
-
-  for (const p of products) {
-    const idx = Math.min(Math.floor(p.opportunity_score / 20), 4)
-    buckets[idx]++
-  }
-
-  const max = Math.max(...buckets, 1)
-
-  return (
-    <div className="flex items-end gap-1.5 h-16">
-      {buckets.map((count, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-          <div className="w-full rounded-t-sm transition-all" style={{
-            height: `${(count / max) * 48}px`,
-            minHeight: count > 0 ? "4px" : "0",
-            backgroundColor: colors[i],
-            opacity: 0.85,
-          }} />
-          <span className="text-[9px] text-muted-foreground">{labels[i]}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function ProductTopCard({
   product,
   rank,
@@ -186,12 +129,10 @@ function ProductTopCard({
       className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
       onClick={onClick}
     >
-      {/* Rank */}
       <span className="text-xs font-bold text-muted-foreground w-4 shrink-0 pt-1">
         {rank}
       </span>
 
-      {/* Image */}
       <div className="w-14 h-14 rounded-lg bg-muted overflow-hidden shrink-0 flex items-center justify-center">
         {imageUrl && !imgError ? (
           <img src={imageUrl} alt={product.title} className="w-full h-full object-cover" onError={() => setImgError(true)} />
@@ -200,7 +141,6 @@ function ProductTopCard({
         )}
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium line-clamp-2 leading-snug text-foreground group-hover:text-primary transition-colors">
           {product.title}
@@ -216,15 +156,15 @@ function ProductTopCard({
             </span>
           )}
         </div>
-        {/* Mini score bars */}
         <div className="flex gap-0.5 mt-1.5">
           {SCORE_COMPONENTS.map((c) => (
-            <MiniScoreBar key={c.key} value={(product as unknown as Record<string, number | undefined>)[c.key]} color={c.color} />
+            <div key={c.key} className="flex-1" title={`${c.label}: ${c.desc}`}>
+              <MiniScoreBar value={(product as unknown as Record<string, number | undefined>)[c.key]} color={c.color} />
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Score ring */}
       <ScoreRing score={product.opportunity_score} size={40} />
     </div>
   )
@@ -241,8 +181,9 @@ export function DashboardContent() {
   const [loadingCats, setLoadingCats] = useState(true)
   const [platform, setPlatform] = useState<"amazon" | "aliexpress">("aliexpress")
   const [showAllTop, setShowAllTop] = useState(false)
+  const [showSearchBar, setShowSearchBar] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
 
-  // Fetch weekly top 50
   useEffect(() => {
     apiFetch("/api/data/weekly-top")
       .then((r) => (r.ok ? r.json() : null))
@@ -254,7 +195,6 @@ export function DashboardContent() {
       .finally(() => setLoadingTop(false))
   }, [])
 
-  // Fetch categories
   useEffect(() => {
     apiFetch("/api/data/categories")
       .then((r) => (r.ok ? r.json() : null))
@@ -266,7 +206,6 @@ export function DashboardContent() {
       .finally(() => setLoadingCats(false))
   }, [])
 
-  // Fetch recent queries
   useEffect(() => {
     apiFetch("/api/query-history?limit=8")
       .then((r) => (r.ok ? r.json() : []))
@@ -280,15 +219,14 @@ export function DashboardContent() {
     router.push(`/dashboard/search?${params.toString()}`)
   }
 
+  const handleQuickSearch = (p: "amazon" | "aliexpress") => {
+    setPlatform(p)
+    setShowSearchBar(true)
+  }
+
   const displayedProducts = showAllTop ? topProducts : topProducts.slice(0, 10)
 
-  // Stats derived from top products
-  const avgScore = topProducts.length
-    ? (topProducts.reduce((s, p) => s + p.opportunity_score, 0) / topProducts.length).toFixed(1)
-    : "—"
-  const topScore = topProducts.length
-    ? topProducts[0].opportunity_score.toFixed(1)
-    : "—"
+  const hasClusterData = topProducts.some((p) => p.cluster_name)
 
   return (
     <main className="min-h-screen bg-background">
@@ -296,59 +234,66 @@ export function DashboardContent() {
       <div className="ml-[240px] min-h-screen p-6">
         <div className="max-w-6xl mx-auto space-y-6">
 
-          {/* Header + search */}
+          {/* Header */}
           <div className="flex flex-col gap-4 animate-fade-in-up">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">Your e-commerce intelligence hub</p>
-              </div>
-              {/* Platform toggle */}
-              <div className="flex bg-card rounded-full p-1 border border-border shadow-sm">
-                {(["aliexpress", "amazon"] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPlatform(p)}
-                    className={cn(
-                      "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                      platform === p ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {p === "aliexpress" ? "AliExpress" : "Amazon"}
-                  </button>
-                ))}
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">Your e-commerce intelligence hub</p>
             </div>
 
-            {/* Search bar */}
-            <div className="flex gap-2">
-              <Input
-                placeholder={`Search ${platform === "amazon" ? "Amazon" : "AliExpress"} products…`}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="border border-border shadow-sm"
-              />
-              <Button onClick={handleSearch} className="shrink-0">
-                <Search className="w-4 h-4 mr-1.5" />
-                Search
-              </Button>
-            </div>
+            {showSearchBar && (
+              <div className="flex gap-2 animate-fade-in-up">
+                <div className="flex bg-card rounded-full p-1 border border-border shadow-sm">
+                  {(["aliexpress", "amazon"] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPlatform(p)}
+                      className={cn(
+                        "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                        platform === p ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {p === "aliexpress" ? "AliExpress" : "Amazon"}
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  placeholder={`Search ${platform === "amazon" ? "Amazon" : "AliExpress"} products…`}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="border border-border shadow-sm"
+                  autoFocus
+                />
+                <Button onClick={handleSearch} className="shrink-0">
+                  <Search className="w-4 h-4 mr-1.5" />
+                  Search
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => { setShowSearchBar(false); setQuery("") }}
+                  className="shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Quick access */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in-up">
             {[
-              { label: "Search AliExpress", icon: Search, href: "/dashboard/search?platform=aliexpress", color: "text-orange-500" },
-              { label: "Search Amazon",     icon: Search, href: "/dashboard/search?platform=amazon",     color: "text-blue-500" },
-              { label: "Margin Calculator", icon: Calculator, href: "/dashboard/calculator",              color: "text-emerald-500" },
-              { label: "Browse Categories", icon: Layers,     href: "/dashboard/categories",              color: "text-purple-500" },
-            ].map(({ label, icon: Icon, href, color }) => (
+              { label: "Search AliExpress", icon: Search, action: () => handleQuickSearch("aliexpress"), color: "text-orange-500" },
+              { label: "Search Amazon",     icon: Search, action: () => handleQuickSearch("amazon"),     color: "text-blue-500" },
+              { label: "Margin Calculator", icon: Calculator, action: () => router.push("/dashboard/calculator"), color: "text-emerald-500" },
+              { label: "Browse Categories", icon: Layers,     action: () => router.push("/dashboard/categories"), color: "text-purple-500" },
+            ].map(({ label, icon: Icon, action, color }) => (
               <Button
-                key={href}
+                key={label}
                 variant="outline"
                 className="h-auto py-4 flex flex-col gap-1.5 hover:border-primary/40 transition-colors"
-                onClick={() => router.push(href)}
+                onClick={action}
               >
                 <Icon className={cn("w-5 h-5", color)} />
                 <span className="text-xs font-medium">{label}</span>
@@ -368,12 +313,79 @@ export function DashboardContent() {
                       <Award className="w-4 h-4 text-amber-500" />
                       Top Acquisition Suggestions
                     </CardTitle>
-                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                      Data-based · AliExpress
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowGuide((v) => !v)}
+                        className="h-7 px-2 text-[11px] gap-1"
+                      >
+                        <HelpCircle className="w-3 h-3" />
+                        {showGuide ? "Hide guide" : "How to read"}
+                      </Button>
+                      <span className="text-[11px] text-muted-foreground bg-muted px-2.5 py-1 rounded-full flex items-center gap-1.5" title="Refreshed weekly from your default + favourited categories">
+                        <RefreshCw className="w-3 h-3" />
+                        AliExpress · Weekly refresh
+                      </span>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
+                  {/* Reading guide */}
+                  {showGuide && (
+                    <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border animate-fade-in-up">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-xs font-semibold flex items-center gap-1.5">
+                          <Info className="w-3.5 h-3.5 text-primary" />
+                          How to Read These Results
+                        </h4>
+                        <button onClick={() => setShowGuide(false)} className="text-muted-foreground hover:text-foreground">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-muted-foreground">
+                        <div className="space-y-1.5">
+                          <p className="font-semibold text-foreground">Score Ring (0–100)</p>
+                          <p>Overall opportunity score. Higher = better sourcing target.</p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">70+ Strong</span>
+                            <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">50–69 Moderate</span>
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">30–49 Weak</span>
+                            <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 dark:text-red-400 font-medium">&lt;30 Poor</span>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <p className="font-semibold text-foreground">Score Bars (left to right)</p>
+                          <div className="space-y-0.5">
+                            {SCORE_COMPONENTS.map((c) => (
+                              <div key={c.key} className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                                <span className="font-medium text-foreground w-14">{c.label}</span>
+                                <span>{c.desc}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Score bar legend — compact inline */}
+                  {!showGuide && (
+                    <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider shrink-0">Score bars:</span>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        {SCORE_COMPONENTS.map((c) => (
+                          <div key={c.key} className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                            <span className="text-[10px] text-muted-foreground">{c.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {loadingTop ? (
                     <div className="space-y-3">
                       {Array.from({ length: 5 }).map((_, i) => (
@@ -394,7 +406,6 @@ export function DashboardContent() {
                             product={p}
                             rank={i + 1}
                             onClick={() => {
-                              // Navigate to search with this query if we could derive it
                               router.push("/dashboard/search?platform=aliexpress")
                             }}
                           />
@@ -417,56 +428,8 @@ export function DashboardContent() {
               </Card>
             </div>
 
-            {/* Right: Stats + Charts */}
+            {/* Right sidebar */}
             <div className="space-y-4">
-
-              {/* Score stats */}
-              <div className="grid grid-cols-2 gap-3">
-                <Card className="border border-border shadow-sm">
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
-                    <p className="text-2xl font-bold text-primary">{avgScore}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">this week</p>
-                  </CardContent>
-                </Card>
-                <Card className="border border-border shadow-sm">
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground mb-1">Top Score</p>
-                    <p className="text-2xl font-bold text-emerald-500">{topScore}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">this week</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Score distribution */}
-              {topProducts.length > 0 && (
-                <Card className="border border-border shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <BarChart2 className="w-4 h-4 text-blue-500" />
-                      Score Distribution
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScoreHistogram products={topProducts} />
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Cluster breakdown */}
-              {topProducts.length > 0 && (
-                <Card className="border border-border shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-purple-500" />
-                      Cluster Breakdown
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ClusterDistributionChart products={topProducts} />
-                  </CardContent>
-                </Card>
-              )}
 
               {/* Recent queries */}
               {recentQueries.length > 0 && (

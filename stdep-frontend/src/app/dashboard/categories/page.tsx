@@ -17,9 +17,9 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
-  Pencil,
   Check,
   X,
+  Star,
 } from "lucide-react"
 
 type CategoryDef = {
@@ -29,34 +29,77 @@ type CategoryDef = {
   suggested_items: string[]
 }
 
+type Favourite = {
+  category_id: string
+  query: string
+  source: string
+  added_at: string
+  is_favourite: boolean
+}
+
 function CategoriesContent() {
   useAuthGuard()
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [categories, setCategories] = useState<CategoryDef[]>([])
+  const [favouritesAlix, setFavouritesAlix] = useState<Favourite[]>([])
+  const [favouritesAmz, setFavouritesAmz] = useState<Favourite[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(
     searchParams.get("id") || null
   )
 
-  // New category form
   const [showNewForm, setShowNewForm] = useState(false)
   const [newLabel, setNewLabel] = useState("")
   const [newItems, setNewItems] = useState("")
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState("")
-
-  // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
-    apiFetch("/api/data/categories")
-      .then((r) => (r.ok ? r.json() : { categories: [] }))
-      .then((data) => setCategories(data.categories || []))
+    Promise.all([
+      apiFetch("/api/data/categories").then((r) => r.ok ? r.json() : { categories: [] }),
+      apiFetch("/api/data/favourites/aliexpress").then((r) => r.ok ? r.json() : { favourites: [] }),
+      apiFetch("/api/data/favourites/amazon").then((r) => r.ok ? r.json() : { favourites: [] }),
+    ])
+      .then(([catData, favAlixData, favAmzData]) => {
+        setCategories(catData.categories || [])
+        setFavouritesAlix(favAlixData.favourites || [])
+        setFavouritesAmz(favAmzData.favourites || [])
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  const getMergedItems = (cat: CategoryDef): { item: string; isFavourited: boolean }[] => {
+    const allFavs = [...favouritesAlix, ...favouritesAmz]
+    const favQueries = allFavs
+      .filter((f) => f.is_favourite && f.category_id === cat.id)
+      .map((f) => f.query)
+
+    const seen = new Set<string>()
+    const result: { item: string; isFavourited: boolean }[] = []
+
+    for (const item of cat.suggested_items) {
+      const key = item.toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        const isFav = favQueries.some((q) => q.toLowerCase() === key)
+        result.push({ item, isFavourited: isFav })
+      }
+    }
+
+    for (const q of favQueries) {
+      const key = q.toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        result.push({ item: q, isFavourited: true })
+      }
+    }
+
+    return result
+  }
 
   const handleSuggestedClick = (catId: string, item: string) => {
     router.push(
@@ -119,7 +162,6 @@ function CategoriesContent() {
       setCategories((prev) => prev.filter((c) => c.id !== catId))
       if (expandedId === catId) setExpandedId(null)
     } catch {
-      // silent
     } finally {
       setDeletingId(null)
     }
@@ -133,7 +175,6 @@ function CategoriesContent() {
       <DashboardSidebar />
       <div className="ml-[240px] min-h-screen p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <span className="bg-primary/10 p-2 rounded-xl">
@@ -155,7 +196,6 @@ function CategoriesContent() {
             </Button>
           </div>
 
-          {/* New category form */}
           {showNewForm && (
             <Card className="border border-primary/30 shadow-sm mb-6 animate-fade-in-up">
               <CardHeader className="pb-3">
@@ -211,46 +251,52 @@ function CategoriesContent() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* System categories */}
               {systemCats.length > 0 && (
                 <section>
                   <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                     System Categories
                   </h2>
                   <div className="space-y-2">
-                    {systemCats.map((cat) => (
-                      <CategoryCard
-                        key={cat.id}
-                        cat={cat}
-                        expanded={expandedId === cat.id}
-                        onToggle={() => setExpandedId(expandedId === cat.id ? null : cat.id)}
-                        onItemClick={handleSuggestedClick}
-                        onDelete={null}
-                        deleting={false}
-                      />
-                    ))}
+                    {systemCats.map((cat) => {
+                      const mergedItems = getMergedItems(cat)
+                      return (
+                        <CategoryCard
+                          key={cat.id}
+                          cat={cat}
+                          mergedItems={mergedItems}
+                          expanded={expandedId === cat.id}
+                          onToggle={() => setExpandedId(expandedId === cat.id ? null : cat.id)}
+                          onItemClick={handleSuggestedClick}
+                          onDelete={null}
+                          deleting={false}
+                        />
+                      )
+                    })}
                   </div>
                 </section>
               )}
 
-              {/* User categories */}
               {userCats.length > 0 && (
                 <section>
                   <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                     My Categories
                   </h2>
                   <div className="space-y-2">
-                    {userCats.map((cat) => (
-                      <CategoryCard
-                        key={cat.id}
-                        cat={cat}
-                        expanded={expandedId === cat.id}
-                        onToggle={() => setExpandedId(expandedId === cat.id ? null : cat.id)}
-                        onItemClick={handleSuggestedClick}
-                        onDelete={handleDeleteCategory}
-                        deleting={deletingId === cat.id}
-                      />
-                    ))}
+                    {userCats.map((cat) => {
+                      const mergedItems = getMergedItems(cat)
+                      return (
+                        <CategoryCard
+                          key={cat.id}
+                          cat={cat}
+                          mergedItems={mergedItems}
+                          expanded={expandedId === cat.id}
+                          onToggle={() => setExpandedId(expandedId === cat.id ? null : cat.id)}
+                          onItemClick={handleSuggestedClick}
+                          onDelete={handleDeleteCategory}
+                          deleting={deletingId === cat.id}
+                        />
+                      )
+                    })}
                   </div>
                 </section>
               )}
@@ -272,6 +318,7 @@ function CategoriesContent() {
 
 function CategoryCard({
   cat,
+  mergedItems,
   expanded,
   onToggle,
   onItemClick,
@@ -279,6 +326,7 @@ function CategoryCard({
   deleting,
 }: {
   cat: CategoryDef
+  mergedItems: { item: string; isFavourited: boolean }[]
   expanded: boolean
   onToggle: () => void
   onItemClick: (catId: string, item: string) => void
@@ -306,7 +354,12 @@ function CategoryCard({
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {cat.suggested_items.length} suggested item{cat.suggested_items.length !== 1 ? "s" : ""}
+            {mergedItems.length} suggested item{mergedItems.length !== 1 ? "s" : ""}
+            {mergedItems.some((m) => m.isFavourited) && (
+              <span className="ml-1">
+                · {mergedItems.filter((m) => m.isFavourited).length} favourited
+              </span>
+            )}
           </p>
         </div>
         {onDelete && (
@@ -326,19 +379,28 @@ function CategoryCard({
 
       {expanded && (
         <div className="px-4 pb-4 pt-1 border-t border-border">
-          {cat.suggested_items.length === 0 ? (
+          {mergedItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No suggested items yet.{cat.is_user_generated ? " You can add items when saving searches to this category." : ""}
+              No suggested items yet.{cat.is_user_generated ? " Save searches to this category and they'll appear here." : ""}
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {cat.suggested_items.map((item) => (
+              {mergedItems.map(({ item, isFavourited }) => (
                 <button
                   key={item}
                   onClick={() => onItemClick(cat.id, item)}
-                  className="text-sm px-3 py-1.5 rounded-full border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors flex items-center gap-1.5"
+                  className={cn(
+                    "text-sm px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1.5",
+                    isFavourited
+                      ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                      : "border-border hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                  )}
                 >
-                  <Search className="w-3 h-3" />
+                  {isFavourited ? (
+                    <Star className="w-3 h-3 fill-amber-400 stroke-amber-400" />
+                  ) : (
+                    <Search className="w-3 h-3" />
+                  )}
                   {item}
                 </button>
               ))}
