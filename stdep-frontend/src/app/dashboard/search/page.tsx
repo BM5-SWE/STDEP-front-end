@@ -455,29 +455,23 @@ function SearchContent() {
       try {
         const res = await apiFetch("/api/data/search/status", {
           method: "POST",
-          body: JSON.stringify({ execution_arn: executionArn }),
+          body: JSON.stringify({ execution_arn: executionArn, query: q, platform: p }),
         })
         if (!res.ok) throw new Error("Status check failed")
         const data = await res.json()
 
-        if (data.status === "SUCCEEDED") {
+        if (data.status === "completed" && data.data) {
           stopPolling()
-          setStatusMessage("Processing results...")
-          const resultRes = await apiFetch(
-            `/api/data/scored/${p}/latest?query_slug=${encodeURIComponent(q.replace(/ /g, "_").toLowerCase())}`
-          )
-          if (!resultRes.ok) throw new Error("Failed to fetch results")
-          const resultData = await resultRes.json()
-          processResults(resultData, q, p)
+          processResults(data.data, q, p)
           setIsSearching(false)
           setStatusMessage("")
-        } else if (data.status === "FAILED" || data.status === "TIMED_OUT") {
+        } else if (data.status === "failed") {
           stopPolling()
-          setError(`Pipeline ${data.status.toLowerCase()}. Please try again.`)
+          setError(data.error || "Pipeline failed. Please try again.")
           setIsSearching(false)
           setStatusMessage("")
         } else {
-          setStatusMessage(`Running pipeline… (${data.status})`)
+          setStatusMessage("Pipeline running — this may take 30–60 seconds…")
           pollingRef.current = setTimeout(() => pollStatus(executionArn, q, p), 4000)
         }
       } catch {
