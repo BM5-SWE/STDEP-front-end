@@ -219,7 +219,7 @@ function ProductTopCard({
         {/* Mini score bars */}
         <div className="flex gap-0.5 mt-1.5">
           {SCORE_COMPONENTS.map((c) => (
-            <MiniScoreBar key={c.key} value={(product as Record<string, number | undefined>)[c.key]} color={c.color} />
+            <MiniScoreBar key={c.key} value={(product as unknown as Record<string, number | undefined>)[c.key]} color={c.color} />
           ))}
         </div>
       </div>
