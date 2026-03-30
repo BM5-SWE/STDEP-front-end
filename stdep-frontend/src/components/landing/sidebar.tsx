@@ -57,14 +57,10 @@ export function Sidebar() {
             <CardContent className="pt-0">
               <div className="border-t border-border pt-4 flex items-center justify-between gap-4">
                 <p className="text-xs text-muted-foreground text-left">
-                  {"Don't have an access code? "}
-                  <span className="underline cursor-pointer hover:text-foreground">
-                    Click here
-                  </span>
-                  {" for more information"}
+                  Don&apos;t have an access code? Please contact your administrator for more information.
                 </p>
                 <Link href="/register">
-                  <Button variant="outline" className="rounded-full px-8 py-5 border-border hover:bg-muted bg-transparent">
+                  <Button variant="outline" className="rounded-full px-8 py-5 border-border hover:bg-muted bg-transparent shrink-0">
                     Register
                   </Button>
                 </Link>
