@@ -8,7 +8,7 @@ import { useAuthGuard } from "@/hooks/use-auth-guard"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Search,
   Star,
@@ -16,8 +16,6 @@ import {
   Loader2,
   ExternalLink,
   Info,
-  ChevronDown,
-  ChevronRight,
   X,
   HelpCircle,
   Package,
@@ -182,14 +180,9 @@ function SearchPageContent() {
         try {
           const res = await apiFetch("/api/data/search/status", {
             method: "POST",
-            body: JSON.stringify({
-              execution_arn: arn,
-              query: q,
-              platform: p,
-            }),
+            body: JSON.stringify({ execution_arn: arn, query: q, platform: p }),
           })
           const data = await res.json()
-
           if (data.status === "completed" && data.data) {
             storeResults(p, data.data, data.key, q, false)
             setIsSearching(false)
@@ -207,7 +200,6 @@ function SearchPageContent() {
           pollRef.current = setTimeout(poll, 5000)
         }
       }
-
       poll()
     },
     [storeResults]
@@ -220,29 +212,20 @@ function SearchPageContent() {
       setIsSearching(true)
       setStatusMessage("Checking for cached results...")
       setIsSaved(false)
-
-      if (pollRef.current) {
-        clearTimeout(pollRef.current)
-        pollRef.current = null
-      }
+      if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null }
 
       try {
         const res = await apiFetch("/api/data/search", {
           method: "POST",
-          body: JSON.stringify({
-            query: searchQuery,
-            platform: searchPlatform,
-          }),
+          body: JSON.stringify({ query: searchQuery, platform: searchPlatform }),
         })
         const data = await res.json()
-
         if (!res.ok) {
           setError(data.detail || "Search failed")
           setIsSearching(false)
           setStatusMessage("")
           return
         }
-
         if (data.status === "cached") {
           storeResults(searchPlatform, data.data, data.key, searchQuery, true)
           setIsSearching(false)
@@ -265,25 +248,18 @@ function SearchPageContent() {
   )
 
   useEffect(() => {
-    if (initialQuery) {
-      doSearch(initialQuery, initialPlatform)
-    }
+    if (initialQuery) doSearch(initialQuery, initialPlatform)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = () => {
     if (!query.trim()) return
-    router.replace(
-      `/dashboard/search?q=${encodeURIComponent(query.trim())}&platform=${platform}`
-    )
+    router.replace(`/dashboard/search?q=${encodeURIComponent(query.trim())}&platform=${platform}`)
     doSearch(query.trim(), platform)
   }
 
   const handlePlatformSwitch = (newPlatform: "amazon" | "aliexpress") => {
     if (newPlatform === platform) return
-    if (pollRef.current) {
-      clearTimeout(pollRef.current)
-      pollRef.current = null
-    }
+    if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null }
     setPlatform(newPlatform)
     setIsSearching(false)
     setStatusMessage("")
@@ -304,11 +280,7 @@ function SearchPageContent() {
     try {
       await apiFetch(`/api/data/favourites/${platform}`, {
         method: "POST",
-        body: JSON.stringify({
-          category_id: categoryId,
-          query: q,
-          source,
-        }),
+        body: JSON.stringify({ category_id: categoryId, query: q, source }),
       })
       setIsSaved(true)
     } catch {}
@@ -317,11 +289,9 @@ function SearchPageContent() {
 
   const getPrice = (p: ScoredProduct) =>
     p.effective_price ?? p.sale_price ?? p.price ?? p.price_buybox ?? null
-
   const getRating = (p: ScoredProduct) => p.star_rating ?? p.rating ?? null
 
   const products = currentResults?.products || []
-
   const hasClusterData = products.some((p) => p.cluster_name)
 
   return (
@@ -329,62 +299,45 @@ function SearchPageContent() {
       <DashboardSidebar />
       <div className="ml-[240px] min-h-screen p-4 pl-0">
         <div className="flex flex-col gap-4 max-w-7xl mx-auto">
-          {/* Search Bar + Platform Toggle */}
+          {/* Search Bar */}
           <div className="flex gap-2 animate-fade-in-up">
             <div className="flex bg-card rounded-full p-1 border border-border shadow-sm">
-              <button
-                onClick={() => handlePlatformSwitch("aliexpress")}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                  platform === "aliexpress"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                AliExpress
-              </button>
-              <button
-                onClick={() => handlePlatformSwitch("amazon")}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                  platform === "amazon"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Amazon
-              </button>
+              {(["aliexpress", "amazon"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => handlePlatformSwitch(p)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                    platform === p
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {p === "aliexpress" ? "AliExpress" : "Amazon"}
+                </button>
+              ))}
             </div>
             <Input
               type="text"
               placeholder={`Search ${platform === "amazon" ? "Amazon" : "AliExpress"} products...`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSearch()
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSearch() }}
               className="flex-1 border border-border shadow-sm"
               disabled={isSearching}
             />
             <Button onClick={handleSearch} disabled={isSearching}>
-              {isSearching ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Search className="w-4 h-4" />
-              )}
+              {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             </Button>
           </div>
 
-          {/* Status / Error Messages */}
           {statusMessage && (
             <div className="text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
               {statusMessage}
             </div>
           )}
-          {error && (
-            <div className="text-sm text-destructive">Error: {error}</div>
-          )}
+          {error && <div className="text-sm text-destructive">Error: {error}</div>}
 
           {/* Results Header */}
           {products.length > 0 && !isSearching && (
@@ -392,32 +345,20 @@ function SearchPageContent() {
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">
                   {products.length} products
-                  {currentResults?.query && (
-                    <> for &ldquo;{currentResults.query}&rdquo;</>
-                  )}
-                  {currentResults?.isCached && (
-                    <span className="ml-1 text-xs">(cached)</span>
-                  )}
+                  {currentResults?.query && <> for &ldquo;{currentResults.query}&rdquo;</>}
+                  {currentResults?.isCached && <span className="ml-1 text-xs">(cached)</span>}
                 </span>
                 {currentResults?.isCached && (
                   <button
-                    onClick={() =>
-                      doSearch(currentResults.query || query, platform)
-                    }
+                    onClick={() => doSearch(currentResults.query || query, platform)}
                     className="text-xs text-primary hover:underline flex items-center gap-1"
                   >
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 )}
               </div>
-
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowGuide((v) => !v)}
-                  className="gap-1.5 text-xs"
-                >
+                <Button variant="outline" size="sm" onClick={() => setShowGuide((v) => !v)} className="gap-1.5 text-xs">
                   <HelpCircle className="w-3.5 h-3.5" />
                   {showGuide ? "Hide guide" : "How to read results"}
                 </Button>
@@ -428,17 +369,14 @@ function SearchPageContent() {
                   disabled={isSaved}
                   className="flex items-center gap-1.5"
                 >
-                  <Star
-                    className="w-4 h-4"
-                    fill={isSaved ? "currentColor" : "none"}
-                  />
+                  <Star className="w-4 h-4" fill={isSaved ? "currentColor" : "none"} />
                   {isSaved ? "Search saved" : "Save this search"}
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Reading Guide — collapsible */}
+          {/* Reading Guide */}
           {showGuide && products.length > 0 && (
             <Card className="border border-primary/20 shadow-sm animate-fade-in-up">
               <CardContent className="p-4">
@@ -456,10 +394,10 @@ function SearchPageContent() {
                     <p className="font-semibold text-foreground">Opportunity Score (0–100)</p>
                     <p>Composite score combining all factors below. Higher = better sourcing opportunity.</p>
                     <div className="flex gap-2 flex-wrap">
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-medium">70+ Strong</span>
-                      <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 font-medium">50–69 Moderate</span>
-                      <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 font-medium">30–49 Weak</span>
-                      <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 font-medium">&lt;30 Poor</span>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">70+ Strong</span>
+                      <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">50–69 Moderate</span>
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">30–49 Weak</span>
+                      <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 dark:text-red-400 font-medium">&lt;30 Poor</span>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -478,9 +416,9 @@ function SearchPageContent() {
                     <div className="space-y-2 md:col-span-2">
                       <p className="font-semibold text-foreground">
                         Clusters
-                        <span className="ml-1.5 font-normal text-[10px] bg-orange-500/10 text-orange-600 px-1.5 py-0.5 rounded-full">AliExpress only</span>
+                        <span className="ml-1.5 font-normal text-[10px] bg-orange-500/10 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full">AliExpress only</span>
                       </p>
-                      <p>Products are grouped by ML analysis of pricing, demand, ratings, and promotions.</p>
+                      <p>Products grouped by ML analysis of pricing, demand, ratings, and promotions.</p>
                       <div className="flex flex-wrap gap-2">
                         {CLUSTER_DEFINITIONS.map((c) => (
                           <span
@@ -501,29 +439,23 @@ function SearchPageContent() {
             </Card>
           )}
 
-          {/* Cluster Legend — compact inline */}
-          {currentResults?.clusterLegend &&
-            Object.keys(currentResults.clusterLegend).length > 0 && (
-              <div className="flex flex-wrap gap-2 animate-fade-in-up">
-                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider self-center mr-1">Clusters:</span>
-                {Object.entries(currentResults.clusterLegend).map(
-                  ([id, info]: [string, any]) => (
-                    <span
-                      key={id}
-                      className="text-xs px-2.5 py-1 rounded-full border flex items-center gap-1.5"
-                      style={{
-                        borderColor: info.color || undefined,
-                        color: info.color || undefined,
-                      }}
-                      title={info.description || ""}
-                    >
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: info.color }} />
-                      {info.name}
-                    </span>
-                  )
-                )}
-              </div>
-            )}
+          {/* Cluster Legend */}
+          {currentResults?.clusterLegend && Object.keys(currentResults.clusterLegend).length > 0 && (
+            <div className="flex flex-wrap gap-2 animate-fade-in-up">
+              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider self-center mr-1">Clusters:</span>
+              {Object.entries(currentResults.clusterLegend).map(([id, info]: [string, any]) => (
+                <span
+                  key={id}
+                  className="text-xs px-2.5 py-1 rounded-full border flex items-center gap-1.5"
+                  style={{ borderColor: info.color || undefined, color: info.color || undefined }}
+                  title={info.description || ""}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: info.color }} />
+                  {info.name}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Product Grid */}
           {products.length > 0 && (
@@ -531,35 +463,30 @@ function SearchPageContent() {
               {products.map((product, i) => {
                 const price = getPrice(product)
                 const rating = getRating(product)
-                const id =
-                  product.product_id || product.asin || `${product.title}-${i}`
+                const id = product.product_id || product.asin || `${product.title}-${i}`
+                let imageUrl = product.main_image_url || ""
+                if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl
 
                 return (
-                  <Card
-                    key={id}
-                    className="border border-border shadow-sm hover:shadow-md transition-all group"
-                  >
+                  <Card key={id} className="border border-border shadow-sm hover:shadow-md transition-all group">
                     <CardContent className="p-3">
-                      {product.main_image_url && (
+                      {imageUrl && (
                         <div className="aspect-square mb-2 rounded overflow-hidden bg-muted">
                           <img
-                            src={product.main_image_url}
+                            src={imageUrl}
                             alt={product.title}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none"
+                            }}
                           />
                         </div>
                       )}
-                      <p className="text-sm font-medium line-clamp-2 mb-2">
-                        {product.title}
-                      </p>
-
+                      <p className="text-sm font-medium line-clamp-2 mb-2">{product.title}</p>
                       {product.brand && (
-                        <p className="text-xs text-muted-foreground mb-1.5">
-                          {product.brand}
-                        </p>
+                        <p className="text-xs text-muted-foreground mb-1.5">{product.brand}</p>
                       )}
 
-                      {/* Price + Opportunity Score */}
                       <div className="flex items-center justify-between mb-2">
                         {price != null && (
                           <div className="flex items-baseline gap-1.5">
@@ -576,7 +503,6 @@ function SearchPageContent() {
                         <OpportunityBadge score={product.opportunity_score} />
                       </div>
 
-                      {/* Key stats — human readable */}
                       <div className="flex flex-wrap gap-1.5 mb-2">
                         {rating != null && (
                           <span className="text-xs px-2 py-0.5 rounded bg-muted flex items-center gap-0.5" title="Customer rating">
@@ -601,7 +527,6 @@ function SearchPageContent() {
                         )}
                       </div>
 
-                      {/* Score breakdown bars */}
                       <div className="space-y-0.5 mb-2">
                         {SCORE_COMPONENTS.map((c) => (
                           <ScoreBar
@@ -613,14 +538,11 @@ function SearchPageContent() {
                         ))}
                       </div>
 
-                      {/* Cluster badge */}
                       {product.cluster_name && (
                         <span
                           className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded mb-2"
                           style={{
-                            backgroundColor: product.cluster_color
-                              ? `${product.cluster_color}20`
-                              : undefined,
+                            backgroundColor: product.cluster_color ? `${product.cluster_color}20` : undefined,
                             color: product.cluster_color || undefined,
                           }}
                           title={product.cluster_description || ""}
@@ -654,26 +576,19 @@ function SearchPageContent() {
           {!isSearching && !statusMessage && products.length === 0 && !error && (
             <div className="text-center py-16 text-muted-foreground">
               <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-lg">
-                Search {platform === "amazon" ? "Amazon" : "AliExpress"} for
-                products
-              </p>
-              <p className="text-sm mt-1">
-                Enter a query above to find and score products
-              </p>
+              <p className="text-lg">Search {platform === "amazon" ? "Amazon" : "AliExpress"} for products</p>
+              <p className="text-sm mt-1">Enter a query above to find and score products</p>
             </div>
           )}
         </div>
 
-        {/* Save Search Category Modal */}
+        {/* Favourite Modal */}
         {favouriteModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="bg-background rounded-lg shadow-lg p-6 min-w-[340px] max-w-[90vw] animate-fade-in-up">
               <h2 className="text-lg font-bold mb-3">Save this search</h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Choose a category for &ldquo;
-                {currentResults?.query || query}&rdquo; or skip to leave
-                uncategorized.
+                Choose a category for &ldquo;{currentResults?.query || query}&rdquo; or skip to leave uncategorized.
               </p>
               <select
                 value={selectedCategory}
@@ -681,29 +596,13 @@ function SearchPageContent() {
                 className="w-full border rounded px-3 py-2 text-sm mb-4 bg-background"
               >
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
+                  <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
               </select>
               <div className="flex gap-2">
-                <Button
-                  onClick={() => doSaveFavourite(selectedCategory, "manual")}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => doSaveFavourite("uncategorized", "manual")}
-                >
-                  Skip
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => setFavouriteModal(false)}
-                >
-                  Cancel
-                </Button>
+                <Button onClick={() => doSaveFavourite(selectedCategory, "manual")}>Save</Button>
+                <Button variant="outline" onClick={() => doSaveFavourite("uncategorized", "manual")}>Skip</Button>
+                <Button variant="ghost" onClick={() => setFavouriteModal(false)}>Cancel</Button>
               </div>
             </div>
           </div>

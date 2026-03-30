@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { apiFetch } from "@/lib/api"
@@ -14,17 +14,14 @@ import {
   Calculator,
   Layers,
   History,
-  TrendingUp,
   Star,
   Package,
   ChevronRight,
-  BarChart2,
   Award,
-  Zap,
-  DollarSign,
   RefreshCw,
   Info,
   X,
+  HelpCircle,
 } from "lucide-react"
 
 type TopProduct = {
@@ -62,11 +59,8 @@ type QueryRecord = {
   query_text: string
   platform: string
   created_at: string
-  total_products_returned?: number
-  num_clusters?: number
 }
 
-// Score components config
 const SCORE_COMPONENTS = [
   { key: "demand_score",     label: "Demand",     color: "#3B82F6", desc: "Sales volume & velocity" },
   { key: "structural_score", label: "Structural",  color: "#8B5CF6", desc: "Listing quality & completeness" },
@@ -76,11 +70,11 @@ const SCORE_COMPONENTS = [
 ]
 
 const CLUSTER_DEFINITIONS = [
-  { name: "Winners",                  color: "#1D9E75", desc: "High demand, strong fundamentals, proven sellers. Best sourcing targets." },
-  { name: "Full-Price Performers",    color: "#378ADD", desc: "Strong sales without heavy discounting. Higher margin opportunities." },
-  { name: "Discount Fighters",        color: "#EF9F27", desc: "Cheap prices, heavy promotions, but low ratings. Risky." },
-  { name: "Overpriced Underperformers", color: "#E24B4A", desc: "High prices, low demand. Avoid for sourcing." },
-  { name: "Quality Sleepers",         color: "#7F77DD", desc: "Excellent ratings but low sales. Hidden gems needing traffic." },
+  { name: "Winners",                    color: "#1D9E75", desc: "High demand, strong fundamentals. Best sourcing targets." },
+  { name: "Full-Price Performers",      color: "#378ADD", desc: "Strong sales without heavy discounting." },
+  { name: "Discount Fighters",          color: "#EF9F27", desc: "Cheap, heavily promoted, but risky quality." },
+  { name: "Overpriced Underperformers", color: "#E24B4A", desc: "High prices, low demand. Avoid." },
+  { name: "Quality Sleepers",           color: "#7F77DD", desc: "Great ratings, low sales. Hidden gems." },
 ]
 
 function MiniScoreBar({ value, color }: { value?: number; color: string }) {
@@ -113,65 +107,6 @@ function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
         {score.toFixed(0)}
       </text>
     </svg>
-  )
-}
-
-function ClusterDistributionChart({ products }: { products: TopProduct[] }) {
-  const clusterCounts: Record<string, { count: number; color: string }> = {}
-  for (const p of products) {
-    if (!p.cluster_name) continue
-    if (!clusterCounts[p.cluster_name]) {
-      clusterCounts[p.cluster_name] = { count: 0, color: p.cluster_color || "#888" }
-    }
-    clusterCounts[p.cluster_name].count++
-  }
-
-  const total = products.length
-  const entries = Object.entries(clusterCounts).sort((a, b) => b[1].count - a[1].count)
-  if (entries.length === 0) return null
-
-  return (
-    <div className="space-y-2">
-      {entries.map(([name, { count, color }]) => (
-        <div key={name} className="flex items-center gap-2 text-xs">
-          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-          <span className="w-32 truncate text-muted-foreground">{name}</span>
-          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full transition-all" style={{ width: `${(count / total) * 100}%`, backgroundColor: color }} />
-          </div>
-          <span className="w-6 text-right font-medium text-foreground">{count}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ScoreHistogram({ products }: { products: TopProduct[] }) {
-  const buckets = [0, 0, 0, 0, 0]
-  const labels = ["0–20", "20–40", "40–60", "60–80", "80–100"]
-  const colors = ["#EF4444", "#EF9F27", "#3B82F6", "#1D9E75", "#10B981"]
-
-  for (const p of products) {
-    const idx = Math.min(Math.floor(p.opportunity_score / 20), 4)
-    buckets[idx]++
-  }
-
-  const max = Math.max(...buckets, 1)
-
-  return (
-    <div className="flex items-end gap-1.5 h-16">
-      {buckets.map((count, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-          <div className="w-full rounded-t-sm transition-all" style={{
-            height: `${(count / max) * 48}px`,
-            minHeight: count > 0 ? "4px" : "0",
-            backgroundColor: colors[i],
-            opacity: 0.85,
-          }} />
-          <span className="text-[9px] text-muted-foreground">{labels[i]}</span>
-        </div>
-      ))}
-    </div>
   )
 }
 
@@ -222,7 +157,6 @@ function ProductTopCard({
             </span>
           )}
         </div>
-        {/* Mini score bars with inline legend on hover via title */}
         <div className="flex gap-0.5 mt-1.5">
           {SCORE_COMPONENTS.map((c) => (
             <div key={c.key} className="flex-1" title={`${c.label}: ${c.desc}`}>
@@ -249,9 +183,8 @@ export function DashboardContent() {
   const [platform, setPlatform] = useState<"amazon" | "aliexpress">("aliexpress")
   const [showAllTop, setShowAllTop] = useState(false)
   const [showSearchBar, setShowSearchBar] = useState(false)
-  const [showClusterInfo, setShowClusterInfo] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
 
-  // Fetch weekly top 50
   useEffect(() => {
     apiFetch("/api/data/weekly-top")
       .then((r) => (r.ok ? r.json() : null))
@@ -263,7 +196,6 @@ export function DashboardContent() {
       .finally(() => setLoadingTop(false))
   }, [])
 
-  // Fetch categories
   useEffect(() => {
     apiFetch("/api/data/categories")
       .then((r) => (r.ok ? r.json() : null))
@@ -275,7 +207,6 @@ export function DashboardContent() {
       .finally(() => setLoadingCats(false))
   }, [])
 
-  // Fetch recent queries
   useEffect(() => {
     apiFetch("/api/query-history?limit=8")
       .then((r) => (r.ok ? r.json() : []))
@@ -296,13 +227,7 @@ export function DashboardContent() {
 
   const displayedProducts = showAllTop ? topProducts : topProducts.slice(0, 10)
 
-  // Stats derived from top products
-  const avgScore = topProducts.length
-    ? (topProducts.reduce((s, p) => s + p.opportunity_score, 0) / topProducts.length).toFixed(1)
-    : "—"
-  const topScore = topProducts.length
-    ? topProducts[0].opportunity_score.toFixed(1)
-    : "—"
+  const hasClusterData = topProducts.some((p) => p.cluster_name)
 
   return (
     <main className="min-h-screen bg-background">
@@ -312,14 +237,11 @@ export function DashboardContent() {
 
           {/* Header */}
           <div className="flex flex-col gap-4 animate-fade-in-up">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">Your e-commerce intelligence hub</p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">Your e-commerce intelligence hub</p>
             </div>
 
-            {/* Search bar — only visible after clicking a search button */}
             {showSearchBar && (
               <div className="flex gap-2 animate-fade-in-up">
                 <div className="flex bg-card rounded-full p-1 border border-border shadow-sm">
@@ -393,6 +315,15 @@ export function DashboardContent() {
                       Top Acquisition Suggestions
                     </CardTitle>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowGuide((v) => !v)}
+                        className="h-7 px-2 text-[11px] gap-1"
+                      >
+                        <HelpCircle className="w-3 h-3" />
+                        {showGuide ? "Hide guide" : "How to read"}
+                      </Button>
                       <span className="text-[11px] text-muted-foreground bg-muted px-2.5 py-1 rounded-full flex items-center gap-1.5" title="Refreshed weekly from your default + favourited categories">
                         <RefreshCw className="w-3 h-3" />
                         AliExpress · Weekly refresh
@@ -401,18 +332,81 @@ export function DashboardContent() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  {/* Score bar legend — compact inline */}
-                  <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
-                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider shrink-0">Score bars:</span>
-                    <div className="flex flex-wrap gap-x-3 gap-y-1">
-                      {SCORE_COMPONENTS.map((c) => (
-                        <div key={c.key} className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
-                          <span className="text-[10px] text-muted-foreground">{c.label}</span>
+                  {/* Reading guide */}
+                  {showGuide && (
+                    <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border animate-fade-in-up">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-xs font-semibold flex items-center gap-1.5">
+                          <Info className="w-3.5 h-3.5 text-primary" />
+                          How to Read These Results
+                        </h4>
+                        <button onClick={() => setShowGuide(false)} className="text-muted-foreground hover:text-foreground">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-muted-foreground">
+                        <div className="space-y-1.5">
+                          <p className="font-semibold text-foreground">Score Ring (0–100)</p>
+                          <p>Overall opportunity score. Higher = better sourcing target.</p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">70+ Strong</span>
+                            <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">50–69 Moderate</span>
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">30–49 Weak</span>
+                            <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 dark:text-red-400 font-medium">&lt;30 Poor</span>
+                          </div>
                         </div>
-                      ))}
+                        <div className="space-y-1.5">
+                          <p className="font-semibold text-foreground">Score Bars (left to right)</p>
+                          <div className="space-y-0.5">
+                            {SCORE_COMPONENTS.map((c) => (
+                              <div key={c.key} className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                                <span className="font-medium text-foreground w-14">{c.label}</span>
+                                <span>{c.desc}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {hasClusterData && (
+                          <div className="md:col-span-2 space-y-1.5">
+                            <p className="font-semibold text-foreground">
+                              Clusters
+                              <span className="ml-1.5 font-normal text-[10px] bg-orange-500/10 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full">AliExpress only</span>
+                            </p>
+                            <p>Products grouped by ML analysis of pricing, demand, ratings, and promotions.</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {CLUSTER_DEFINITIONS.map((c) => (
+                                <span
+                                  key={c.name}
+                                  className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
+                                  style={{ borderColor: c.color, color: c.color }}
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: c.color }} />
+                                  {c.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Score bar legend — compact inline */}
+                  {!showGuide && (
+                    <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider shrink-0">Score bars:</span>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        {SCORE_COMPONENTS.map((c) => (
+                          <div key={c.key} className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                            <span className="text-[10px] text-muted-foreground">{c.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {loadingTop ? (
                     <div className="space-y-3">
@@ -456,96 +450,8 @@ export function DashboardContent() {
               </Card>
             </div>
 
-            {/* Right: Stats + Charts */}
+            {/* Right sidebar */}
             <div className="space-y-4">
-
-              {/* Score stats */}
-              <div className="grid grid-cols-2 gap-3">
-                <Card className="border border-border shadow-sm">
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
-                    <p className="text-2xl font-bold text-primary">{avgScore}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">this week</p>
-                  </CardContent>
-                </Card>
-                <Card className="border border-border shadow-sm">
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground mb-1">Top Score</p>
-                    <p className="text-2xl font-bold text-emerald-500">{topScore}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">this week</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Score distribution */}
-              {topProducts.length > 0 && (
-                <Card className="border border-border shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <BarChart2 className="w-4 h-4 text-blue-500" />
-                      Score Distribution
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScoreHistogram products={topProducts} />
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Cluster breakdown */}
-              {topProducts.length > 0 && (
-                <Card className="border border-border shadow-sm">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-purple-500" />
-                        Cluster Breakdown
-                      </CardTitle>
-                      <span className="text-[10px] text-muted-foreground bg-orange-500/10 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full font-medium">
-                        AliExpress only
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <ClusterDistributionChart products={topProducts} />
-                    <button
-                      onClick={() => setShowClusterInfo((v) => !v)}
-                      className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
-                    >
-                      <Info className="w-3 h-3" />
-                      {showClusterInfo ? "Hide cluster guide" : "What do these clusters mean?"}
-                    </button>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Cluster Legend — expandable */}
-              {showClusterInfo && (
-                <Card className="border border-border shadow-sm animate-fade-in-up">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">Cluster Guide</CardTitle>
-                      <span className="text-[10px] text-muted-foreground bg-orange-500/10 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full font-medium">
-                        AliExpress only
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2.5">
-                    <p className="text-[11px] text-muted-foreground mb-2">
-                      Products are grouped into clusters using ML analysis of pricing, demand, ratings, and promotions.
-                    </p>
-                    {CLUSTER_DEFINITIONS.map((c) => (
-                      <div key={c.name} className="flex gap-2.5 items-start">
-                        <div className="w-3 h-3 rounded-full shrink-0 mt-0.5" style={{ backgroundColor: c.color }} />
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-foreground">{c.name}</p>
-                          <p className="text-[11px] text-muted-foreground leading-snug">{c.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
 
               {/* Recent queries */}
               {recentQueries.length > 0 && (

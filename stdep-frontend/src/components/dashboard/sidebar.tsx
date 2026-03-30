@@ -3,12 +3,12 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/api"
 import {
   BarChart3,
   History,
-  Bookmark,
   Calculator,
   Settings,
   HelpCircle,
@@ -17,6 +17,8 @@ import {
   Search,
   Star,
   Layers,
+  Moon,
+  Sun,
 } from "lucide-react"
 
 const menuItems = [
@@ -25,7 +27,6 @@ const menuItems = [
   { name: "Favourites", href: "/dashboard/favourites", icon: Star },
   { name: "Categories", href: "/dashboard/categories", icon: Layers },
   { name: "History", href: "/dashboard/history", icon: History },
-  { name: "Saved Products", href: "/dashboard/saved", icon: Bookmark },
   { name: "Margin Calculator", href: "/dashboard/calculator", icon: Calculator },
 ]
 
@@ -39,6 +40,10 @@ export function DashboardSidebar() {
   const router = useRouter()
   const [userName, setUserName] = useState("")
   const [userRole, setUserRole] = useState("")
+  const { theme, setTheme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
 
   useEffect(() => {
     apiFetch("/auth/me").then(async (res) => {
@@ -54,6 +59,10 @@ export function DashboardSidebar() {
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
     router.replace("/login")
+  }
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
 
   return (
@@ -120,6 +129,20 @@ export function DashboardSidebar() {
                 </Link>
               )
             })}
+            {/* Dark mode toggle */}
+            {mounted && (
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                {resolvedTheme === "dark" ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+                {resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}
+              </button>
+            )}
           </nav>
         </div>
 

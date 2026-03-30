@@ -50,18 +50,12 @@ function CategoriesContent() {
     searchParams.get("id") || null
   )
 
-  // New category form
   const [showNewForm, setShowNewForm] = useState(false)
   const [newLabel, setNewLabel] = useState("")
   const [newItems, setNewItems] = useState("")
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState("")
-
-  // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null)
-
-  // Platform for search links
-  const [platform, setPlatform] = useState<"amazon" | "aliexpress">("aliexpress")
 
   useEffect(() => {
     Promise.all([
@@ -78,7 +72,6 @@ function CategoriesContent() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Build merged suggested items: category suggested_items + favourited queries for that category
   const getMergedItems = (cat: CategoryDef): { item: string; isFavourited: boolean }[] => {
     const allFavs = [...favouritesAlix, ...favouritesAmz]
     const favQueries = allFavs
@@ -88,7 +81,6 @@ function CategoriesContent() {
     const seen = new Set<string>()
     const result: { item: string; isFavourited: boolean }[] = []
 
-    // Add suggested items first
     for (const item of cat.suggested_items) {
       const key = item.toLowerCase()
       if (!seen.has(key)) {
@@ -98,7 +90,6 @@ function CategoriesContent() {
       }
     }
 
-    // Add favourited queries that aren't already in suggested_items
     for (const q of favQueries) {
       const key = q.toLowerCase()
       if (!seen.has(key)) {
@@ -112,7 +103,7 @@ function CategoriesContent() {
 
   const handleSuggestedClick = (catId: string, item: string) => {
     router.push(
-      `/dashboard/search?q=${encodeURIComponent(item)}&platform=${platform}&category=${encodeURIComponent(catId)}`
+      `/dashboard/search?q=${encodeURIComponent(item)}&platform=aliexpress&category=${encodeURIComponent(catId)}`
     )
   }
 
@@ -171,7 +162,6 @@ function CategoriesContent() {
       setCategories((prev) => prev.filter((c) => c.id !== catId))
       if (expandedId === catId) setExpandedId(null)
     } catch {
-      // silent
     } finally {
       setDeletingId(null)
     }
@@ -185,7 +175,6 @@ function CategoriesContent() {
       <DashboardSidebar />
       <div className="ml-[240px] min-h-screen p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <span className="bg-primary/10 p-2 rounded-xl">
@@ -196,45 +185,17 @@ function CategoriesContent() {
                 <p className="text-sm text-muted-foreground">Browse suggested items or manage your own categories</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Platform toggle */}
-              <div className="flex bg-card rounded-full p-1 border border-border shadow-sm">
-                <button
-                  onClick={() => setPlatform("aliexpress")}
-                  className={cn(
-                    "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                    platform === "aliexpress"
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  AliExpress
-                </button>
-                <button
-                  onClick={() => setPlatform("amazon")}
-                  className={cn(
-                    "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                    platform === "amazon"
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Amazon
-                </button>
-              </div>
-              <Button
-                onClick={() => setShowNewForm((v) => !v)}
-                variant={showNewForm ? "outline" : "default"}
-                size="sm"
-                className="gap-1.5"
-              >
-                {showNewForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                {showNewForm ? "Cancel" : "New Category"}
-              </Button>
-            </div>
+            <Button
+              onClick={() => setShowNewForm((v) => !v)}
+              variant={showNewForm ? "outline" : "default"}
+              size="sm"
+              className="gap-1.5"
+            >
+              {showNewForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {showNewForm ? "Cancel" : "New Category"}
+            </Button>
           </div>
 
-          {/* New category form */}
           {showNewForm && (
             <Card className="border border-primary/30 shadow-sm mb-6 animate-fade-in-up">
               <CardHeader className="pb-3">
@@ -290,7 +251,6 @@ function CategoriesContent() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* System categories */}
               {systemCats.length > 0 && (
                 <section>
                   <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -316,7 +276,6 @@ function CategoriesContent() {
                 </section>
               )}
 
-              {/* User categories */}
               {userCats.length > 0 && (
                 <section>
                   <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
