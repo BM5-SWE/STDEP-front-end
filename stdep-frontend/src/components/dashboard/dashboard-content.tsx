@@ -65,8 +65,7 @@ const SCORE_COMPONENTS = [
   { key: "demand_score",     label: "Demand",     color: "#3B82F6", desc: "Sales volume & velocity" },
   { key: "structural_score", label: "Structural",  color: "#8B5CF6", desc: "Listing quality & completeness" },
   { key: "pricing_score",    label: "Pricing",     color: "#10B981", desc: "Price competitiveness" },
-  { key: "durability_score", label: "Durability",  color: "#F59E0B", desc: "Long-term sales consistency" },
-  { key: "validation_score", label: "Validation",  color: "#EC4899", desc: "Review quality & sentiment" },
+  { key: "durability_score", label: "Durability",  color: "#F59E0B", desc: "Long-term sales consistency" }
 ]
 
 const CLUSTER_DEFINITIONS = [
