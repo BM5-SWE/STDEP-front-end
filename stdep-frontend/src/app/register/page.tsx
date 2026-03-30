@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -176,21 +178,35 @@ export default function RegisterPage() {
                       />
                     </div>
                     <div className="space-y-2 text-left">
+                      <Label htmlFor="access-code">Access Code</Label>
+                      <Input
+                        id="access-code"
+                        type="text"
+                        placeholder="Access code"
+                        value={accessCode}
+                        onChange={(e) => setAccessCode(e.target.value)}
+                        disabled={loading}
+                        required
+                        className="rounded-lg"
+                      />
+                    </div>
+                    <div className="space-y-2 text-left">
                       <Label htmlFor="password">Password</Label>
                       <Input 
                         id="password" 
                         type="password" 
                         placeholder="Create a password" 
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => {
+                          setPassword(e.target.value)
+                          if (!showPasswordRules && e.target.value.length > 0) setShowPasswordRules(true)
+                        }}
                         disabled={loading}
                         required
                         minLength={8}
                         className="rounded-lg"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Minimum 8 characters
-                      </p>
+                      {showPasswordRules && <PasswordStrengthIndicator password={password} />}
                     </div>
                     {error && (
                       <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
