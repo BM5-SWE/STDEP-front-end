@@ -1,21 +1,28 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
-import { useAuthGuard } from "@/hooks/use-auth-guard"
-import { apiFetch } from "@/lib/api"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { apiFetch } from "@/lib/api"
+import { useAuthGuard } from "@/hooks/use-auth-guard"
+import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  Star,
   Search,
   Calculator,
-  History,
   Layers,
-  ExternalLink,
+  History,
   TrendingUp,
+  Star,
+  Package,
+  ChevronRight,
+  BarChart2,
+  Award,
+  Zap,
+  DollarSign,
+  RefreshCw,
 } from "lucide-react"
 
 type TopProduct = {
@@ -31,6 +38,14 @@ type TopProduct = {
   cluster_color?: string
   star_rating?: number
   rating?: number
+  demand_score?: number
+  structural_score?: number
+  pricing_score?: number
+  durability_score?: number
+  validation_score?: number
+  confidence_score?: number
+  sales_count?: number
+  reviews_count?: number
 }
 
 type CategoryDef = {
@@ -45,6 +60,174 @@ type QueryRecord = {
   query_text: string
   platform: string
   created_at: string
+  total_products_returned?: number
+  num_clusters?: number
+}
+
+// Score components config
+const SCORE_COMPONENTS = [
+  { key: "demand_score",    label: "Demand",     color: "#3B82F6" },
+  { key: "structural_score",label: "Structural", color: "#8B5CF6" },
+  { key: "pricing_score",   label: "Pricing",    color: "#10B981" },
+  { key: "durability_score",label: "Durability", color: "#F59E0B" },
+  { key: "validation_score",label: "Validation", color: "#EC4899" },
+]
+
+function MiniScoreBar({ value, color }: { value?: number; color: string }) {
+  if (value == null) return null
+  return (
+    <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
+      <div className="h-full rounded-full" style={{ width: `${Math.round(value * 100)}%`, backgroundColor: color }} />
+    </div>
+  )
+}
+
+function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
+  const radius = (size - 8) / 2
+  const circ = 2 * Math.PI * radius
+  const dash = (score / 100) * circ
+  const color = score >= 70 ? "#1D9E75" : score >= 50 ? "#3B82F6" : score >= 30 ? "#EF9F27" : "#EF4444"
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" strokeWidth="4" className="text-muted" />
+      <circle
+        cx={size / 2} cy={size / 2} r={radius} fill="none"
+        stroke={color} strokeWidth="4"
+        strokeDasharray={`${dash} ${circ}`}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+      <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="central"
+        fontSize="10" fontWeight="700" fill={color}>
+        {score.toFixed(0)}
+      </text>
+    </svg>
+  )
+}
+
+function ClusterDistributionChart({ products }: { products: TopProduct[] }) {
+  const clusterCounts: Record<string, { count: number; color: string }> = {}
+  for (const p of products) {
+    if (!p.cluster_name) continue
+    if (!clusterCounts[p.cluster_name]) {
+      clusterCounts[p.cluster_name] = { count: 0, color: p.cluster_color || "#888" }
+    }
+    clusterCounts[p.cluster_name].count++
+  }
+
+  const total = products.length
+  const entries = Object.entries(clusterCounts).sort((a, b) => b[1].count - a[1].count)
+  if (entries.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      {entries.map(([name, { count, color }]) => (
+        <div key={name} className="flex items-center gap-2 text-xs">
+          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+          <span className="w-32 truncate text-muted-foreground">{name}</span>
+          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${(count / total) * 100}%`, backgroundColor: color }} />
+          </div>
+          <span className="w-6 text-right font-medium text-foreground">{count}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ScoreHistogram({ products }: { products: TopProduct[] }) {
+  // Bucket into 0-20, 20-40, 40-60, 60-80, 80-100
+  const buckets = [0, 0, 0, 0, 0]
+  const labels = ["0–20", "20–40", "40–60", "60–80", "80–100"]
+  const colors = ["#EF4444", "#EF9F27", "#3B82F6", "#1D9E75", "#10B981"]
+
+  for (const p of products) {
+    const idx = Math.min(Math.floor(p.opportunity_score / 20), 4)
+    buckets[idx]++
+  }
+
+  const max = Math.max(...buckets, 1)
+
+  return (
+    <div className="flex items-end gap-1.5 h-16">
+      {buckets.map((count, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+          <div className="w-full rounded-t-sm transition-all" style={{
+            height: `${(count / max) * 48}px`,
+            minHeight: count > 0 ? "4px" : "0",
+            backgroundColor: colors[i],
+            opacity: 0.85,
+          }} />
+          <span className="text-[9px] text-muted-foreground">{labels[i]}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ProductTopCard({
+  product,
+  rank,
+  onClick,
+}: {
+  product: TopProduct
+  rank: number
+  onClick: () => void
+}) {
+  const [imgError, setImgError] = useState(false)
+  let imageUrl = product.main_image_url || ""
+  if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl
+  const price = product.effective_price ?? product.sale_price ?? product.price
+  const rating = product.star_rating ?? product.rating
+
+  return (
+    <div
+      className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+      onClick={onClick}
+    >
+      {/* Rank */}
+      <span className="text-xs font-bold text-muted-foreground w-4 shrink-0 pt-1">
+        {rank}
+      </span>
+
+      {/* Image */}
+      <div className="w-14 h-14 rounded-lg bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+        {imageUrl && !imgError ? (
+          <img src={imageUrl} alt={product.title} className="w-full h-full object-cover" onError={() => setImgError(true)} />
+        ) : (
+          <Package className="w-6 h-6 text-muted-foreground/30" />
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium line-clamp-2 leading-snug text-foreground group-hover:text-primary transition-colors">
+          {product.title}
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          {price != null && (
+            <span className="text-xs font-bold">${price.toFixed(2)}</span>
+          )}
+          {rating != null && (
+            <span className="flex items-center gap-0.5 text-[11px] text-amber-500">
+              <Star className="w-2.5 h-2.5 fill-amber-400 stroke-amber-400" />
+              {rating.toFixed(1)}
+            </span>
+          )}
+        </div>
+        {/* Mini score bars */}
+        <div className="flex gap-0.5 mt-1.5">
+          {SCORE_COMPONENTS.map((c) => (
+            <MiniScoreBar key={c.key} value={(product as unknown as Record<string, number | undefined>)[c.key]} color={c.color} />
+          ))}
+        </div>
+      </div>
+
+      {/* Score ring */}
+      <ScoreRing score={product.opportunity_score} size={40} />
+    </div>
+  )
 }
 
 export function DashboardContent() {
@@ -56,17 +239,16 @@ export function DashboardContent() {
   const [recentQueries, setRecentQueries] = useState<QueryRecord[]>([])
   const [loadingTop, setLoadingTop] = useState(true)
   const [loadingCats, setLoadingCats] = useState(true)
+  const [platform, setPlatform] = useState<"amazon" | "aliexpress">("aliexpress")
+  const [showAllTop, setShowAllTop] = useState(false)
 
   // Fetch weekly top 50
   useEffect(() => {
     apiFetch("/api/data/weekly-top")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.products) {
-          setTopProducts(data.products.slice(0, 50))
-        } else if (Array.isArray(data)) {
-          setTopProducts(data.slice(0, 50))
-        }
+        if (data?.products) setTopProducts(data.products.slice(0, 50))
+        else if (Array.isArray(data)) setTopProducts(data.slice(0, 50))
       })
       .catch(() => {})
       .finally(() => setLoadingTop(false))
@@ -77,11 +259,8 @@ export function DashboardContent() {
     apiFetch("/api/data/categories")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.categories) {
-          setCategories(
-            data.categories.filter((c: CategoryDef) => c.id !== "uncategorized")
-          )
-        }
+        if (data?.categories)
+          setCategories(data.categories.filter((c: CategoryDef) => c.id !== "uncategorized"))
       })
       .catch(() => {})
       .finally(() => setLoadingCats(false))
@@ -89,13 +268,11 @@ export function DashboardContent() {
 
   // Fetch recent queries
   useEffect(() => {
-    apiFetch("/api/query-history?limit=5")
+    apiFetch("/api/query-history?limit=8")
       .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setRecentQueries(Array.isArray(data) ? data.slice(0, 5) : []))
+      .then((data) => setRecentQueries(Array.isArray(data) ? data.slice(0, 8) : []))
       .catch(() => {})
   }, [])
-
-  const [platform, setPlatform] = useState<"amazon" | "aliexpress">("aliexpress")
 
   const handleSearch = () => {
     const params = new URLSearchParams({ platform })
@@ -103,237 +280,283 @@ export function DashboardContent() {
     router.push(`/dashboard/search?${params.toString()}`)
   }
 
-  const getPrice = (p: TopProduct) =>
-    p.effective_price ?? p.sale_price ?? p.price ?? null
+  const displayedProducts = showAllTop ? topProducts : topProducts.slice(0, 10)
+
+  // Stats derived from top products
+  const avgScore = topProducts.length
+    ? (topProducts.reduce((s, p) => s + p.opportunity_score, 0) / topProducts.length).toFixed(1)
+    : "—"
+  const topScore = topProducts.length
+    ? topProducts[0].opportunity_score.toFixed(1)
+    : "—"
 
   return (
-    <div className="ml-[240px] min-h-screen p-4 pl-0">
-      <div className="flex flex-col gap-6">
+    <main className="min-h-screen bg-background">
+      <DashboardSidebar />
+      <div className="ml-[240px] min-h-screen p-6">
+        <div className="max-w-6xl mx-auto space-y-6">
 
-        {/* Search Bar */}
-        <div className="flex justify-center animate-fade-in-up">
-          <div className="flex gap-2 w-full max-w-2xl items-center">
-            <div className="flex bg-card rounded-full p-1 border border-border shadow-sm shrink-0">
-              <button
-                onClick={() => setPlatform("aliexpress")}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                  platform === "aliexpress"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                AliExpress
-              </button>
-              <button
-                onClick={() => setPlatform("amazon")}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                  platform === "amazon"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Amazon
-              </button>
+          {/* Header + search */}
+          <div className="flex flex-col gap-4 animate-fade-in-up">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+                <p className="text-sm text-muted-foreground mt-0.5">Your e-commerce intelligence hub</p>
+              </div>
+              {/* Platform toggle */}
+              <div className="flex bg-card rounded-full p-1 border border-border shadow-sm">
+                {(["aliexpress", "amazon"] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPlatform(p)}
+                    className={cn(
+                      "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                      platform === p ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {p === "aliexpress" ? "AliExpress" : "Amazon"}
+                  </button>
+                ))}
+              </div>
             </div>
-            <Input
-              type="text"
-              placeholder={`Search ${platform === "amazon" ? "Amazon" : "AliExpress"} products...`}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSearch()
-              }}
-              className="border border-border shadow-sm"
-            />
-            <Button onClick={handleSearch} className="shrink-0">
-              <Search className="w-4 h-4 mr-1.5" />
-              Search
-            </Button>
+
+            {/* Search bar */}
+            <div className="flex gap-2">
+              <Input
+                placeholder={`Search ${platform === "amazon" ? "Amazon" : "AliExpress"} products…`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="border border-border shadow-sm"
+              />
+              <Button onClick={handleSearch} className="shrink-0">
+                <Search className="w-4 h-4 mr-1.5" />
+                Search
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick access */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in-up">
+            {[
+              { label: "Search AliExpress", icon: Search, href: "/dashboard/search?platform=aliexpress", color: "text-orange-500" },
+              { label: "Search Amazon",     icon: Search, href: "/dashboard/search?platform=amazon",     color: "text-blue-500" },
+              { label: "Margin Calculator", icon: Calculator, href: "/dashboard/calculator",              color: "text-emerald-500" },
+              { label: "Browse Categories", icon: Layers,     href: "/dashboard/categories",              color: "text-purple-500" },
+            ].map(({ label, icon: Icon, href, color }) => (
+              <Button
+                key={href}
+                variant="outline"
+                className="h-auto py-4 flex flex-col gap-1.5 hover:border-primary/40 transition-colors"
+                onClick={() => router.push(href)}
+              >
+                <Icon className={cn("w-5 h-5", color)} />
+                <span className="text-xs font-medium">{label}</span>
+              </Button>
+            ))}
+          </div>
+
+          {/* Main content grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 animate-fade-in-up">
+
+            {/* Left: Top Acquisition Suggestions */}
+            <div className="lg:col-span-2 space-y-4">
+              <Card className="border border-border shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <Award className="w-4 h-4 text-amber-500" />
+                      Top Acquisition Suggestions
+                    </CardTitle>
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                      Data-based · AliExpress
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {loadingTop ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />
+                      ))}
+                    </div>
+                  ) : topProducts.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Package className="w-10 h-10 mx-auto mb-2 opacity-20" />
+                      <p className="text-sm">No data yet</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="divide-y divide-border">
+                        {displayedProducts.map((p, i) => (
+                          <ProductTopCard
+                            key={p.product_id || p.asin || i}
+                            product={p}
+                            rank={i + 1}
+                            onClick={() => {
+                              // Navigate to search with this query if we could derive it
+                              router.push("/dashboard/search?platform=aliexpress")
+                            }}
+                          />
+                        ))}
+                      </div>
+                      {topProducts.length > 10 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full mt-2 text-xs"
+                          onClick={() => setShowAllTop((v) => !v)}
+                        >
+                          {showAllTop ? "Show less" : `Show all ${topProducts.length} products`}
+                          <ChevronRight className={cn("w-3 h-3 ml-1 transition-transform", showAllTop && "rotate-90")} />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right: Stats + Charts */}
+            <div className="space-y-4">
+
+              {/* Score stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <Card className="border border-border shadow-sm">
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
+                    <p className="text-2xl font-bold text-primary">{avgScore}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">this week</p>
+                  </CardContent>
+                </Card>
+                <Card className="border border-border shadow-sm">
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Top Score</p>
+                    <p className="text-2xl font-bold text-emerald-500">{topScore}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">this week</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Score distribution */}
+              {topProducts.length > 0 && (
+                <Card className="border border-border shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <BarChart2 className="w-4 h-4 text-blue-500" />
+                      Score Distribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScoreHistogram products={topProducts} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Cluster breakdown */}
+              {topProducts.length > 0 && (
+                <Card className="border border-border shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-purple-500" />
+                      Cluster Breakdown
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ClusterDistributionChart products={topProducts} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Recent queries */}
+              {recentQueries.length > 0 && (
+                <Card className="border border-border shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <History className="w-4 h-4 text-muted-foreground" />
+                      Recent Searches
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    {recentQueries.map((q) => (
+                      <button
+                        key={q.id}
+                        onClick={() =>
+                          router.push(
+                            `/dashboard/search?q=${encodeURIComponent(q.query_text)}&platform=${q.platform}`
+                          )
+                        }
+                        className="w-full flex items-center justify-between text-left px-2 py-1.5 rounded-lg hover:bg-muted transition-colors group"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate group-hover:text-primary transition-colors">
+                            {q.query_text}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {q.platform} · {new Date(q.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                      </button>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs mt-1"
+                      onClick={() => router.push("/dashboard/history")}
+                    >
+                      View all history
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Categories quick-access */}
+              {categories.length > 0 && (
+                <Card className="border border-border shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-purple-500" />
+                      Categories
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingCats ? (
+                      <div className="space-y-1.5">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="h-7 rounded-lg bg-muted animate-pulse" />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {categories.slice(0, 8).map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() =>
+                              router.push(`/dashboard/categories?id=${c.id}`)
+                            }
+                            className="text-xs px-2.5 py-1 rounded-full border border-border hover:border-primary hover:text-primary transition-colors"
+                          >
+                            {c.label}
+                          </button>
+                        ))}
+                        {categories.length > 8 && (
+                          <button
+                            onClick={() => router.push("/dashboard/categories")}
+                            className="text-xs px-2.5 py-1 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            +{categories.length - 8} more
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Quick Access */}
-        <div className="grid grid-cols-4 gap-3 animate-fade-in-up">
-          <Button
-            variant="outline"
-            className="h-auto py-4 flex flex-col gap-1"
-            onClick={() => router.push("/dashboard/search?platform=aliexpress")}
-          >
-            <Search className="w-5 h-5" />
-            <span className="text-xs">Search AliExpress</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto py-4 flex flex-col gap-1"
-            onClick={() => router.push("/dashboard/search?platform=amazon")}
-          >
-            <Search className="w-5 h-5" />
-            <span className="text-xs">Search Amazon</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto py-4 flex flex-col gap-1"
-            onClick={() => router.push("/dashboard/calculator")}
-          >
-            <Calculator className="w-5 h-5" />
-            <span className="text-xs">Margin Calculator</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto py-4 flex flex-col gap-1"
-            onClick={() => router.push("/dashboard/categories")}
-          >
-            <Layers className="w-5 h-5" />
-            <span className="text-xs">Browse Categories</span>
-          </Button>
-        </div>
-
-        {/* Recent Queries */}
-        {recentQueries.length > 0 && (
-          <Card className="border border-border shadow-sm animate-fade-in-up">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                <History className="w-5 h-5" /> Recent Queries
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {recentQueries.map((q) => (
-                  <button
-                    key={q.id}
-                    onClick={() =>
-                      router.push(
-                        `/dashboard/search?q=${encodeURIComponent(q.query_text)}&platform=${q.platform}`
-                      )
-                    }
-                    className="text-sm px-3 py-1.5 rounded-full border border-border hover:bg-muted transition-colors"
-                  >
-                    {q.query_text}
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({q.platform})
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Trending on AliExpress */}
-        <Card className="border border-border shadow-sm animate-fade-in-up">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" /> Trending on AliExpress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingTop ? (
-              <p className="text-muted-foreground text-sm">Loading trending products...</p>
-            ) : topProducts.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No trending data available yet.</p>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {topProducts.slice(0, 20).map((product, i) => {
-                  const price = getPrice(product)
-                  return (
-                    <div
-                      key={product.product_id || product.asin || i}
-                      className="border rounded-lg p-3 hover:shadow-md transition-all bg-background/80"
-                    >
-                      {product.main_image_url && (
-                        <div className="aspect-square mb-2 rounded overflow-hidden bg-muted">
-                          <img
-                            src={product.main_image_url}
-                            alt={product.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <p className="text-sm font-medium line-clamp-2 mb-1">
-                        {product.title}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        {price != null && (
-                          <span className="text-sm font-semibold">
-                            ${price.toFixed(2)}
-                          </span>
-                        )}
-                        <span className="text-xs font-medium bg-foreground text-background px-2 py-0.5 rounded">
-                          {product.opportunity_score}
-                        </span>
-                      </div>
-                      {product.cluster_name && (
-                        <span
-                          className="text-xs mt-1 inline-block px-2 py-0.5 rounded"
-                          style={{
-                            backgroundColor: product.cluster_color
-                              ? `${product.cluster_color}20`
-                              : undefined,
-                            color: product.cluster_color || undefined,
-                          }}
-                        >
-                          {product.cluster_name}
-                        </span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-            {topProducts.length > 20 && (
-              <div className="mt-4 text-center">
-                <Button variant="outline" size="sm">
-                  Show all {topProducts.length} products
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Browse Categories Preview */}
-        <Card className="border border-border shadow-sm animate-fade-in-up">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              <Layers className="w-5 h-5" /> Categories
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingCats ? (
-              <p className="text-muted-foreground text-sm">Loading categories...</p>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {categories.slice(0, 8).map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() =>
-                      router.push(`/dashboard/categories?open=${cat.id}`)
-                    }
-                    className="border rounded-lg p-3 text-left hover:shadow-md transition-all hover:bg-muted/50"
-                  >
-                    <p className="text-sm font-medium">{cat.label}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {cat.suggested_items.length} suggestions
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
-            {categories.length > 8 && (
-              <div className="mt-3 text-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push("/dashboard/categories")}
-                >
-                  View all {categories.length} categories
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
-    </div>
+    </main>
   )
 }

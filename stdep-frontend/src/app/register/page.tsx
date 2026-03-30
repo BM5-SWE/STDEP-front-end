@@ -7,55 +7,110 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
+import { Check, X } from "lucide-react"
+
+type PasswordRule = {
+  label: string
+  test: (pw: string) => boolean
+}
+
+const PASSWORD_RULES: PasswordRule[] = [
+  { label: "At least 8 characters",          test: (pw) => pw.length >= 8 },
+  { label: "One uppercase letter (A–Z)",      test: (pw) => /[A-Z]/.test(pw) },
+  { label: "One lowercase letter (a–z)",      test: (pw) => /[a-z]/.test(pw) },
+  { label: "One number (0–9)",                test: (pw) => /[0-9]/.test(pw) },
+]
+
+function PasswordStrengthIndicator({ password }: { password: string }) {
+  if (!password) return null
+  const passed = PASSWORD_RULES.filter((r) => r.test(password)).length
+  const strength = passed === 4 ? "Strong" : passed >= 2 ? "Fair" : "Weak"
+  const color = passed === 4 ? "bg-emerald-500" : passed >= 2 ? "bg-yellow-400" : "bg-red-500"
+
+  return (
+    <div className="space-y-2 mt-1">
+      {/* Strength bar */}
+      <div className="flex gap-1">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className={cn(
+              "h-1 flex-1 rounded-full transition-all",
+              i <= passed ? color : "bg-muted"
+            )}
+          />
+        ))}
+      </div>
+      <p className={cn(
+        "text-[11px] font-medium",
+        passed === 4 ? "text-emerald-600" : passed >= 2 ? "text-yellow-600" : "text-red-500"
+      )}>
+        {strength}
+      </p>
+      {/* Rule checklist */}
+      <ul className="space-y-0.5">
+        {PASSWORD_RULES.map((rule) => {
+          const ok = rule.test(password)
+          return (
+            <li key={rule.label} className={cn("flex items-center gap-1.5 text-[11px]", ok ? "text-emerald-600" : "text-muted-foreground")}>
+              {ok ? <Check className="w-3 h-3 shrink-0" /> : <X className="w-3 h-3 shrink-0" />}
+              {rule.label}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [accessCode, setAccessCode] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const router = useRouter()
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
+  const [accessCode, setAccessCode] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [showPasswordRules, setShowPasswordRules] = useState(false)
+
+  const passwordValid = PASSWORD_RULES.every((r) => r.test(password))
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault()
+    setError("")
     if (!email.trim() || !username.trim() || !password.trim()) {
-      setError("Email, username, and password are required.");
-      return;
+      setError("Email, username, and password are required.")
+      return
     }
-    setLoading(true);
+    if (!passwordValid) {
+      setError("Password does not meet the requirements below.")
+      setShowPasswordRules(true)
+      return
+    }
+    setLoading(true)
     try {
       const res = await apiFetch("/auth/register", {
         method: "POST",
-        body: JSON.stringify({
-          email,
-          username,
-          password,
-          access_code: accessCode
-        })
-      });
+        body: JSON.stringify({ email, username, password, access_code: accessCode }),
+      })
       if (!res.ok) {
-        let data;
-        try {
-          data = await res.json();
-        } catch {
-          data = {};
-        }
-        setError(data?.detail ?? "Registration failed");
+        let data: Record<string, string> = {}
+        try { data = await res.json() } catch {}
+        setError(data?.detail ?? "Registration failed")
       } else {
-        const data = await res.json();
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("refresh_token", data.refresh_token);
-        router.push("/dashboard");
+        const data = await res.json()
+        localStorage.setItem("access_token", data.access_token)
+        localStorage.setItem("refresh_token", data.refresh_token)
+        router.push("/dashboard")
       }
-    } catch (err) {
-      setError("Network error. Please try again.");
+    } catch {
+      setError("Network error. Please try again.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <main className="min-h-screen bg-background p-4">
@@ -63,19 +118,17 @@ export default function RegisterPage() {
         {/* Left Side - Register Form */}
         <aside className="w-[30%] min-w-[340px] max-w-[440px] flex flex-col">
           <div className="bg-card rounded-2xl flex flex-col h-full p-6 shadow-sm border border-border animate-slide-in-left">
-            {/* Logo Section */}
+            {/* Logo */}
             <div className="mb-8 animate-start-hidden animate-fade-in-up animation-delay-100">
               <Link href="/">
                 <h1 className="text-3xl font-bold text-primary tracking-tight hover:opacity-80 transition-opacity">
                   SmartTrend
                 </h1>
               </Link>
-              <p className="text-xs text-muted-foreground mt-1 uppercase tracking-[0.2em]">
-                BY BM5
-              </p>
+              <p className="text-xs text-muted-foreground mt-1 uppercase tracking-[0.2em]">BY BM5</p>
             </div>
 
-            {/* Register Card */}
+            {/* Card */}
             <Card className="border border-border shadow-none flex-1 flex flex-col animate-start-hidden animate-fade-in-up animation-delay-200">
               <CardHeader className="text-left pb-3">
                 <CardTitle className="text-xl font-bold text-primary">Register</CardTitle>
@@ -87,14 +140,14 @@ export default function RegisterPage() {
                 <form className="border-t border-border pt-4 flex-1 flex flex-col" onSubmit={handleRegister}>
                   <div className="space-y-4 flex-1">
                     <div className="space-y-2 text-left">
-                      <Label htmlFor="name">Full Name</Label>
+                      <Label htmlFor="username">Username</Label>
                       <Input
-                        id="name"
+                        id="username"
                         type="text"
-                        placeholder="Enter your full name"
+                        placeholder="Choose a username"
                         className="rounded-lg"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2 text-left">
@@ -105,18 +158,7 @@ export default function RegisterPage() {
                         placeholder="Enter your email"
                         className="rounded-lg"
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2 text-left">
-                      <Label htmlFor="username">Username</Label>
-                      <Input
-                        id="username"
-                        type="text"
-                        placeholder="Choose a username"
-                        className="rounded-lg"
-                        value={username}
-                        onChange={e => setUsername(e.target.value)}
+                        onChange={(e) => setEmail(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2 text-left">
@@ -124,10 +166,10 @@ export default function RegisterPage() {
                       <Input
                         id="access-code"
                         type="text"
-                        placeholder="Enter access code"
+                        placeholder="6-digit access code"
                         className="rounded-lg"
                         value={accessCode}
-                        onChange={e => setAccessCode(e.target.value)}
+                        onChange={(e) => setAccessCode(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2 text-left">
@@ -138,8 +180,12 @@ export default function RegisterPage() {
                         placeholder="Create a password"
                         className="rounded-lg"
                         value={password}
-                        onChange={e => setPassword(e.target.value)}
+                        onChange={(e) => {
+                          setPassword(e.target.value)
+                          if (!showPasswordRules && e.target.value.length > 0) setShowPasswordRules(true)
+                        }}
                       />
+                      {showPasswordRules && <PasswordStrengthIndicator password={password} />}
                     </div>
                   </div>
                   <div className="mt-auto pt-6">
@@ -152,17 +198,13 @@ export default function RegisterPage() {
                     </Button>
                     {error && <p className="text-xs text-red-500 text-center mt-2">{error}</p>}
                     <p className="text-xs text-muted-foreground text-center mt-4">
-                      {"Already have an account? "}
+                      Already have an account?{" "}
                       <Link href="/login" className="underline hover:text-foreground">
                         Log in here
                       </Link>
                     </p>
                     <p className="text-xs text-muted-foreground text-left mt-4">
-                      {"Don't have an access code? "}
-                      <span className="underline cursor-pointer hover:text-foreground">
-                        Click here
-                      </span>
-                      {" for more information"}
+                      Don&apos;t have an access code? Please contact your administrator for more information.
                     </p>
                   </div>
                 </form>
@@ -178,7 +220,7 @@ export default function RegisterPage() {
           </div>
         </aside>
 
-        {/* Right Side - Welcome Message */}
+        {/* Right Side */}
         <section className="flex-1">
           <div className="bg-card rounded-2xl h-full p-8 shadow-sm border border-border flex flex-col items-center justify-center text-center animate-slide-in-right">
             <p className="text-sm text-muted-foreground uppercase tracking-[0.3em] mb-4">
@@ -188,7 +230,8 @@ export default function RegisterPage() {
               SmartTrend Analytics
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl leading-relaxed text-balance">
-              Join thousands of businesses using SmartTrend to identify emerging market trends, analyze competitor strategies, and drive growth with data-driven insights.
+              Join thousands of businesses using SmartTrend to identify emerging market trends,
+              analyze competitor strategies, and drive growth with data-driven insights.
             </p>
           </div>
         </section>
