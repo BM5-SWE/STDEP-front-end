@@ -368,27 +368,6 @@ export function DashboardContent() {
                             ))}
                           </div>
                         </div>
-                        {hasClusterData && (
-                          <div className="md:col-span-2 space-y-1.5">
-                            <p className="font-semibold text-foreground">
-                              Clusters
-                              <span className="ml-1.5 font-normal text-[10px] bg-orange-500/10 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full">AliExpress only</span>
-                            </p>
-                            <p>Products grouped by ML analysis of pricing, demand, ratings, and promotions.</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {CLUSTER_DEFINITIONS.map((c) => (
-                                <span
-                                  key={c.name}
-                                  className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
-                                  style={{ borderColor: c.color, color: c.color }}
-                                >
-                                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: c.color }} />
-                                  {c.name}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
