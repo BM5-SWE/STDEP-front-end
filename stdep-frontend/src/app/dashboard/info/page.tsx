@@ -30,9 +30,9 @@ export default function InfoPage() {
 						</h1>
 					</div>
 					<section className="mb-8 rounded-2xl bg-card/80 border border-border shadow-sm p-6">
-						<h2 className="text-xl font-semibold mb-2">About TrendPulse</h2>
+						<h2 className="text-xl font-semibold mb-2">About SmartTrend</h2>
 						<p className="text-muted-foreground mb-2">
-							TrendPulse is a smart trend-driven e-commerce analytics platform.
+							SmartTrend is a smart trend-driven e-commerce analytics platform.
 							It helps you discover market trends, track competitor insights,
 							and make data-driven decisions for your business.
 						</p>

@@ -9,7 +9,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'TrendPulse - E-Commerce Market Analytics',
+  title: 'SmartTrend - E-Commerce Market Analytics',
   description: 'Discover market trends, track competitor insights, and make data-driven decisions for your e-commerce business.',
   generator: 'v0.app',
   icons: {
