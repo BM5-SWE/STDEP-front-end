@@ -9,6 +9,7 @@ import { apiFetch } from "@/lib/api"
 import {
   BarChart3,
   History,
+  Bookmark,
   Calculator,
   Settings,
   HelpCircle,
@@ -27,6 +28,7 @@ const menuItems = [
   { name: "Favourites", href: "/dashboard/favourites", icon: Star },
   { name: "Categories", href: "/dashboard/categories", icon: Layers },
   { name: "History", href: "/dashboard/history", icon: History },
+  { name: "Saved Products", href: "/dashboard/saved", icon: Bookmark },
   { name: "Margin Calculator", href: "/dashboard/calculator", icon: Calculator },
 ]
 
@@ -40,7 +42,7 @@ export function DashboardSidebar() {
   const router = useRouter()
   const [userName, setUserName] = useState("")
   const [userRole, setUserRole] = useState("")
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => setMounted(true), [])
@@ -68,14 +70,12 @@ export function DashboardSidebar() {
   return (
     <aside className="fixed left-0 top-0 h-screen w-[240px] flex flex-col p-4">
       <div className="bg-card rounded-2xl flex flex-col h-full p-5 shadow-sm border border-border animate-slide-in-left">
-        {/* Logo */}
         <Link href="/" className="mb-6 animate-start-hidden animate-fade-in-up animation-delay-100">
           <h1 className="text-2xl font-bold text-primary tracking-tight">
             SmartTrend
           </h1>
         </Link>
 
-        {/* Menu Section */}
         <div className="mb-6 animate-start-hidden animate-fade-in-up animation-delay-200">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
             Menu
@@ -105,7 +105,6 @@ export function DashboardSidebar() {
           </nav>
         </div>
 
-        {/* General Section */}
         <div className="mb-6 animate-start-hidden animate-fade-in-up animation-delay-300">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
             General
@@ -129,7 +128,6 @@ export function DashboardSidebar() {
                 </Link>
               )
             })}
-            {/* Dark mode toggle */}
             {mounted && (
               <button
                 onClick={toggleTheme}
@@ -146,7 +144,6 @@ export function DashboardSidebar() {
           </nav>
         </div>
 
-        {/* User Section */}
         <div className="mt-auto animate-start-hidden animate-fade-in-up animation-delay-400">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
             User
