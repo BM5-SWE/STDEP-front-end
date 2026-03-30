@@ -8,16 +8,39 @@ import { useAuthGuard } from "@/hooks/use-auth-guard"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Bookmark,
-  Search,
   Trash2,
   ExternalLink,
   Calculator,
   Package,
   Loader2,
+  Star,
 } from "lucide-react"
+
+type Scores = {
+  opportunity_score?: number | null
+  demand_score?: number | null
+  structural_score?: number | null
+  pricing_score?: number | null
+  durability_score?: number | null
+  confidence_score?: number | null
+  validation_score?: number | null
+  avg_sentiment_score?: number | null
+  star_rating?: number | null
+  rating?: number | null
+  reviews_count?: number | null
+  sales_count?: number | null
+  discount_percent?: number | null
+  is_prime_eligible?: boolean | null
+  has_videos?: boolean | null
+  brand?: string | null
+  cluster_name?: string | null
+  cluster_description?: string | null
+  cluster_color?: string | null
+  original_price?: number | null
+}
 
 type Product = {
   id: string
@@ -29,7 +52,41 @@ type Product = {
   platform_url: string | null
   product_image_url: string | null
   cluster_id: number | null
+  scores: Scores | null
   created_at: string
+}
+
+const SCORE_COMPONENTS = [
+  { key: "demand_score", label: "Demand", color: "#3B82F6" },
+  { key: "structural_score", label: "Structural", color: "#8B5CF6" },
+  { key: "pricing_score", label: "Pricing", color: "#10B981" },
+  { key: "durability_score", label: "Durability", color: "#F59E0B" },
+  { key: "validation_score", label: "Validation", color: "#EC4899" },
+]
+
+function ScoreBar({ value, color, label }: { value?: number | null; color: string; label: string }) {
+  if (value == null) return null
+  const pct = Math.round(value * 100)
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] text-muted-foreground w-16 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+      <span className="text-[10px] font-medium w-7 text-right" style={{ color }}>{pct}</span>
+    </div>
+  )
+}
+
+function OpportunityBadge({ score }: { score: number }) {
+  const color = score >= 70 ? "bg-emerald-500" : score >= 50 ? "bg-blue-500" : score >= 30 ? "bg-amber-500" : "bg-red-500"
+  const label = score >= 70 ? "Strong" : score >= 50 ? "Moderate" : score >= 30 ? "Weak" : "Poor"
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className={cn("text-xs font-bold text-white px-2 py-0.5 rounded", color)}>{score.toFixed(0)}</div>
+      <span className="text-[10px] text-muted-foreground">{label}</span>
+    </div>
+  )
 }
 
 export default function SavedPage() {
@@ -148,10 +205,13 @@ export default function SavedPage() {
                 let imageUrl = product.product_image_url || ""
                 if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl
                 const isDeleting = deletingId === product.id
+                const s = product.scores
+                const rating = s?.star_rating ?? s?.rating ?? null
+                const opportunityScore = s?.opportunity_score ?? null
 
                 return (
                   <Card key={product.id} className="border border-border shadow-sm hover:shadow-md transition-all group">
-                    <CardContent className="p-3">
+                    <CardContent className="p-3 relative">
                       {/* Image */}
                       {imageUrl ? (
                         <div className="aspect-square mb-2 rounded overflow-hidden bg-muted">
@@ -169,23 +229,62 @@ export default function SavedPage() {
                       )}
 
                       {/* Title */}
-                      <p className="text-sm font-medium line-clamp-2 mb-1.5">{product.product_name}</p>
+                      <p className="text-sm font-medium line-clamp-2 mb-2">{product.product_name}</p>
 
-                      {/* Platform + Category */}
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      {/* Brand */}
+                      {s?.brand && <p className="text-xs text-muted-foreground mb-1.5">{s.brand}</p>}
+
+                      {/* Price + Opportunity Score */}
+                      <div className="flex items-center justify-between mb-2">
+                        {product.price != null && (
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-sm font-semibold">{product.currency || "$"}{product.price.toFixed(2)}</span>
+                            {s?.discount_percent != null && s.discount_percent > 0 && (
+                              <span className="text-[10px] font-medium text-green-600 dark:text-green-400">-{s.discount_percent.toFixed(0)}%</span>
+                            )}
+                          </div>
+                        )}
+                        {opportunityScore != null && <OpportunityBadge score={opportunityScore} />}
+                      </div>
+
+                      {/* Stats badges */}
+                      <div className="flex flex-wrap gap-1.5 mb-2">
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-medium">
                           {product.platform === "aliexpress" ? "AliExpress" : "Amazon"}
                         </span>
-                        {product.category && (
-                          <span className="text-[10px] text-muted-foreground truncate">{product.category}</span>
+                        {rating != null && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-muted flex items-center gap-0.5" title="Customer rating">
+                            <Star className="w-2.5 h-2.5 fill-amber-400 stroke-amber-400" />{rating.toFixed(1)}
+                          </span>
+                        )}
+                        {s?.reviews_count != null && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-muted" title="Total reviews">{s.reviews_count.toLocaleString()} reviews</span>
+                        )}
+                        {s?.sales_count != null && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-muted" title="Units sold">{s.sales_count.toLocaleString()} sold</span>
+                        )}
+                        {s?.is_prime_eligible && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300" title="Amazon Prime eligible">Prime</span>
                         )}
                       </div>
 
-                      {/* Price */}
-                      {product.price != null && (
-                        <p className="text-sm font-semibold mb-2">
-                          {product.currency || "$"}{product.price.toFixed(2)}
-                        </p>
+                      {/* Score bars */}
+                      {s && (
+                        <div className="space-y-0.5 mb-2">
+                          {SCORE_COMPONENTS.map((c) => (
+                            <ScoreBar key={c.key} value={(s as Record<string, number | undefined | null>)[c.key]} color={c.color} label={c.label} />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Cluster badge */}
+                      {s?.cluster_name && (
+                        <span className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded mb-2"
+                          style={{ backgroundColor: s.cluster_color ? `${s.cluster_color}20` : undefined, color: s.cluster_color || undefined }}
+                          title={s.cluster_description || ""}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.cluster_color || undefined }} />
+                          {s.cluster_name}
+                        </span>
                       )}
 
                       {/* Actions */}
