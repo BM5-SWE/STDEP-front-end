@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { apiFetch } from "@/lib/api"
 import { useAuthGuard } from "@/hooks/use-auth-guard"
+import { useSavedProducts } from "@/hooks/use-saved-products"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -155,8 +156,9 @@ function ProductDetailModal({
   product: TopProduct
   onClose: () => void
 }) {
+  const { isSaved: isProductSaved, markSaved } = useSavedProducts()
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const saved = isProductSaved(product.title, "aliexpress")
 
   let imageUrl = product.main_image_url || ""
   if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl
@@ -201,7 +203,7 @@ function ProductDetailModal({
           },
         }),
       })
-      if (res.ok) setSaved(true)
+      if (res.ok) markSaved(product.title, "aliexpress")
     } catch {}
     setSaving(false)
   }

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { apiFetch } from "@/lib/api"
 import { useAuthGuard } from "@/hooks/use-auth-guard"
+import { useSavedProducts } from "@/hooks/use-saved-products"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -129,8 +130,7 @@ function SearchPageContent() {
   const [isSaved, setIsSaved] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
 
-  // Track which products have been bookmarked (by index in current results)
-  const [savedProductIds, setSavedProductIds] = useState<Set<string>>(new Set())
+  const { isSaved: isProductSaved, markSaved } = useSavedProducts()
   const [savingProductId, setSavingProductId] = useState<string | null>(null)
 
   const currentResults = resultsByPlatform[platform] || null
@@ -180,7 +180,7 @@ function SearchPageContent() {
     async (searchQuery: string, searchPlatform: string) => {
       if (!searchQuery.trim()) return
       setError(""); setIsSearching(true); setStatusMessage("Checking for cached results..."); setIsSaved(false)
-      setSavedProductIds(new Set())
+      // savedProductIds managed by global context now
       if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null }
       try {
         const res = await apiFetch("/api/data/search", {
@@ -228,7 +228,7 @@ function SearchPageContent() {
 
   const handleSaveProduct = async (product: ScoredProduct) => {
     const productKey = product.product_id || product.asin || product.title
-    if (savedProductIds.has(productKey)) return
+    if (isProductSaved(product.title, platform)) return
     setSavingProductId(productKey)
     try {
       const price = product.effective_price ?? product.sale_price ?? product.price ?? product.price_buybox ?? null
@@ -271,7 +271,7 @@ function SearchPageContent() {
         }),
       })
       if (res.ok) {
-        setSavedProductIds((prev) => new Set(prev).add(productKey))
+        markSaved(product.title, platform)
       }
     } catch {}
     setSavingProductId(null)
@@ -427,7 +427,7 @@ function SearchPageContent() {
                 let imageUrl = product.main_image_url || ""
                 if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl
                 const productKey = product.product_id || product.asin || product.title
-                const isBookmarked = savedProductIds.has(productKey)
+                const isBookmarked = isProductSaved(product.title, platform)
                 const isSaving = savingProductId === productKey
 
                 return (

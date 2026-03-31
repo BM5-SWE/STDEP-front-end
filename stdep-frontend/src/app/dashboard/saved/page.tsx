@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { apiFetch } from "@/lib/api"
 import { useAuthGuard } from "@/hooks/use-auth-guard"
+import { useSavedProducts } from "@/hooks/use-saved-products"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -91,6 +92,7 @@ function OpportunityBadge({ score }: { score: number }) {
 
 export default function SavedPage() {
   useAuthGuard()
+  const { markUnsaved } = useSavedProducts()
   const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
   const [filter, setFilter] = useState("")
@@ -110,6 +112,8 @@ export default function SavedPage() {
     try {
       const res = await apiFetch(`/api/saved-products/${productId}`, { method: "DELETE" })
       if (res.ok) {
+        const deleted = products.find((p) => p.id === productId)
+        if (deleted) markUnsaved(deleted.product_name, deleted.platform)
         setProducts((prev) => prev.filter((p) => p.id !== productId))
       }
     } catch {}
